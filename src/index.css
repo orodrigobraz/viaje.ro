@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design system Viaje.ro - Tema de viagens e descobertas
+Cores inspiradas em azul oceano, verde-petróleo e laranja vibrante
+*/
+
+@layer base {
+  :root {
+    --background: 45 29% 95%;
+    --foreground: 210 12% 16%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 12% 16%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 12% 16%;
+
+    /* Azul oceano profundo - cor principal */
+    --primary: 214 88% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Verde-petróleo suave */
+    --secondary: 184 25% 88%;
+    --secondary-foreground: 184 35% 25%;
+
+    --muted: 210 16% 96%;
+    --muted-foreground: 210 10% 55%;
+
+    /* Verde-petróleo para acentos */
+    --accent: 184 35% 92%;
+    --accent-foreground: 184 35% 25%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 90%;
+    --input: 0 0% 100%;
+    --ring: 214 88% 52%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Laranja vibrante para destaques */
+    --orange: 25 95% 53%;
+    --orange-foreground: 0 0% 100%;
+
+    /* Verde-petróleo profundo */
+    --teal: 184 77% 34%;
+    --teal-foreground: 0 0% 100%;
+
+    --info: 214 88% 52%;
+    --info-foreground: 0 0% 100%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 210 15% 7%;
+    --foreground: 210 20% 95%;
+
+    --card: 210 15% 10%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 210 15% 10%;
+    --popover-foreground: 210 20% 95%;
+
+    /* Azul mais claro para modo escuro */
+    --primary: 214 88% 65%;
+    --primary-foreground: 210 15% 7%;
+
+    /* Verde-petróleo escuro */
+    --secondary: 184 25% 15%;
+    --secondary-foreground: 184 25% 88%;
+
+    --muted: 210 15% 15%;
+    --muted-foreground: 210 15% 65%;
+
+    /* Verde-petróleo médio para acentos */
+    --accent: 184 35% 18%;
+    --accent-foreground: 184 25% 88%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 95%;
+
+    --border: 210 15% 20%;
+    --input: 210 15% 15%;
+    --ring: 214 88% 65%;
+
+    --success: 142 71% 50%;
+    --success-foreground: 210 15% 7%;
+
+    /* Laranja mais vibrante para modo escuro */
+    --orange: 25 95% 58%;
+    --orange-foreground: 210 15% 7%;
+
+    /* Verde-petróleo claro */
+    --teal: 184 77% 45%;
+    --teal-foreground: 210 15% 7%;
+
+    --info: 214 88% 65%;
+    --info-foreground: 210 15% 7%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
