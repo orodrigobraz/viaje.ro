@@ -4,6 +4,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  base: "/viaje.ro/", // Adicione esta linha
   server: {
     host: "::",
     port: 8080,

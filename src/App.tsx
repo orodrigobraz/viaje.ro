@@ -22,7 +22,7 @@ const App = () => (
             className: 'text-base'
           }}
         />
-        <BrowserRouter>
+        <BrowserRouter basename="/viaje.ro/"> {/* Adicione esta linha */}
           <Routes>
             <Route path="/" element={<Index />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

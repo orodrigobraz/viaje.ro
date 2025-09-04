@@ -27,7 +27,7 @@ export const loadGeoJsonData = async (): Promise<GeoJSONCollection> => {
 
   try {
     // Carregar dados GeoJSON dos municípios
-    const response = await fetch('/src/data/municipios.geojson');
+    const response = await fetch('/viaje.ro/src/data/municipios.geojson');
     geoJsonData = await response.json();
     return geoJsonData;
   } catch (error) {
