@@ -1,4 +1,5 @@
-// Utilitário para carregar e processar dados GeoJSON dos municípios brasileiros
+// Utilitário para carregar e processar dados GeoJSON dos municípios brasileiros usando Supabase
+import { supabase } from '@/integrations/supabase/client';
 
 export interface GeoJSONFeature {
   type: "Feature";
@@ -16,53 +17,58 @@ export interface GeoJSONCollection {
   features: GeoJSONFeature[];
 }
 
-// Cache para os dados GeoJSON
-let geoJsonData: GeoJSONCollection | null = null;
-
-// Função para carregar os dados GeoJSON
-export const loadGeoJsonData = async (): Promise<GeoJSONCollection> => {
-  if (geoJsonData) {
-    return geoJsonData;
-  }
-
-  try {
-    // Carregar dados GeoJSON dos municípios
-    const response = await fetch('/viaje.ro/src/data/municipios.geojson');
-    geoJsonData = await response.json();
-    return geoJsonData;
-  } catch (error) {
-    console.error('Erro ao carregar dados GeoJSON:', error);
-    // Retornar estrutura vazia em caso de erro
-    geoJsonData = { type: "FeatureCollection", features: [] };
-    return geoJsonData;
-  }
-};
-
-// Função para buscar a geometria de um município específico
+// Função para buscar a geometria de um município específico no Supabase
 export const findMunicipalityGeometry = async (cityName: string, stateName: string): Promise<GeoJSONFeature | null> => {
   try {
-    const data = await loadGeoJsonData();
-    
     // Normalizar nomes para busca
     const normalizedCityName = cityName.toLowerCase().trim();
     const normalizedStateName = stateName.toLowerCase().trim();
     
-    // Buscar o município nos dados GeoJSON
-    const feature = data.features.find(feature => {
-      const props = feature.properties;
+    // Buscar no Supabase primeiro por nome exato
+    let { data: municipality, error } = await supabase
+      .from('municipios')
+      .select('*')
+      .ilike('nm_mun', cityName)
+      .ilike('nm_uf', stateName)
+      .limit(1)
+      .single();
+
+    // Se não encontrou por nome completo, tentar por sigla do estado
+    if (!municipality && !error) {
+      const { data: altMunicipality, error: altError } = await supabase
+        .from('municipios')
+        .select('*')
+        .ilike('nm_mun', cityName)
+        .ilike('sigla_uf', stateName)
+        .limit(1)
+        .single();
       
-      // Tentar diferentes campos comuns em dados do IBGE
-      const municipioName = (props.NM_MUN || props.nome || props.name || '').toLowerCase();
-      const estadoName = (props.NM_UF || props.estado || props.state || props.sigla_uf || '').toLowerCase();
-      
-      // Verificar se encontrou correspondência exata
-      const cityMatch = municipioName === normalizedCityName;
-      const stateMatch = estadoName === normalizedStateName || estadoName.includes(normalizedStateName) || normalizedStateName.includes(estadoName);
-      
-      return cityMatch && stateMatch;
-    });
-    
-    return feature || null;
+      municipality = altMunicipality;
+      error = altError;
+    }
+
+    if (error || !municipality) {
+      console.warn(`Município não encontrado: ${cityName}, ${stateName}`);
+      return null;
+    }
+
+    // Converter para formato GeoJSON
+    const geoJsonFeature: GeoJSONFeature = {
+      type: "Feature",
+      properties: {
+        NM_MUN: municipality.nm_mun,
+        NM_UF: municipality.nm_uf,
+        SIGLA_UF: municipality.sigla_uf,
+        AREA_KM2: municipality.area_km2,
+        CD_MUN: municipality.cd_mun,
+        nome: municipality.nm_mun,
+        estado: municipality.nm_uf,
+        sigla_uf: municipality.sigla_uf
+      },
+      geometry: municipality.geometria as any
+    };
+
+    return geoJsonFeature;
   } catch (error) {
     console.warn(`Erro ao buscar geometria para ${cityName}, ${stateName}:`, error);
     return null;
