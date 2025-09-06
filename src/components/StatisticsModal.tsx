@@ -340,7 +340,7 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
       name: city.nome,
       value: city.densidade_demografica_2022,
       itemStyle: {
-        color: ['#f59e0b', '#f97316', '#fb923c', '#fdba74', '#fed7aa', '#fff7ed', '#0ea5e9', '#0284c7', '#0369a1', '#075985', '#0c4a6e', '#082f49'][index % 12]
+        color: ['#dc2626', '#b91c1c', '#991b1b', '#7f1d1d', '#ef4444', '#f97316', '#ea580c', '#c2410c', '#9a3412', '#7c2d12', '#0ea5e9', '#0284c7'][index % 12]
       }
     }));
 
@@ -395,11 +395,12 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
     if (visitedCitiesData.length === 0) return null;
 
     const citiesWithIDHM = visitedCitiesData
-      .sort((a, b) => b.idhm_2010 - a.idhm_2010);
+      .sort((a, b) => b.idhm_2010 - a.idhm_2010)
+      .slice(0, 20);
 
     return {
       title: {
-        text: 'IDHM das Cidades Visitadas (2010)',
+        text: 'Top 20 Cidades por IDHM (2010)',
         left: 'center',
         textStyle: { fontSize: 14 }
       },
@@ -445,7 +446,8 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
     const data = topCitiesPIB.map(city => ({
       name: city.nome,
       value: city.pib_per_capita_2020,
-      population: city.populacao_estimada_censo_2024
+      population: city.populacao_estimada_censo_2024,
+      estado: city.estado
     }));
 
     return {
@@ -461,7 +463,7 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
         },
         formatter: (params: any) => {
           const data = params[0];
-          return `${data.name}<br/>PIB per capita: R$ ${data.value.toLocaleString('pt-BR')}<br/>População: ${data.data.population.toLocaleString('pt-BR')} hab`;
+          return `${data.name} - ${data.data.estado}<br/>PIB per capita: R$ ${data.value.toLocaleString('pt-BR')}<br/>População: ${data.data.population.toLocaleString('pt-BR')} hab`;
         }
       },
       grid: {

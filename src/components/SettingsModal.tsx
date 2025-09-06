@@ -2,20 +2,39 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Settings, Palette, RotateCcw, Heart } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Settings, Palette, RotateCcw, Heart, Moon, Sun } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useTheme } from './ThemeProvider';
 import { statesData } from '@/data/mockData';
 
 const colorOptions = [
-  '#ff7800', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444',
-  '#8b5cf6', '#06b6d4', '#84cc16', '#f97316', '#ec4899',
-  '#6366f1', '#14b8a6', '#a855f7', '#22c55e', '#fb7185',
-  '#fbbf24', '#f43f5e', '#3b82f6', '#64748b', '#737373'
+  { value: '#ff7800', label: 'Laranja' },
+  { value: '#0ea5e9', label: 'Azul Claro' },
+  { value: '#10b981', label: 'Verde' },
+  { value: '#f59e0b', label: 'Amarelo' },
+  { value: '#ef4444', label: 'Vermelho' },
+  { value: '#8b5cf6', label: 'Roxo' },
+  { value: '#06b6d4', label: 'Ciano' },
+  { value: '#84cc16', label: 'Lima' },
+  { value: '#f97316', label: 'Laranja Escuro' },
+  { value: '#ec4899', label: 'Rosa' },
+  { value: '#6366f1', label: 'Índigo' },
+  { value: '#14b8a6', label: 'Verde Água' },
+  { value: '#a855f7', label: 'Violeta' },
+  { value: '#22c55e', label: 'Verde Claro' },
+  { value: '#fb7185', label: 'Rosa Claro' },
+  { value: '#fbbf24', label: 'Âmbar' },
+  { value: '#f43f5e', label: 'Vermelho Rosa' },
+  { value: '#3b82f6', label: 'Azul' },
+  { value: '#64748b', label: 'Cinza' },
+  { value: '#737373', label: 'Cinza Neutro' }
 ];
 
 export const SettingsModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { stateColors, wishlistColor, setStateColor, setWishlistColor, resetStateColors } = useSettings();
+  const { theme, setTheme } = useTheme();
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -46,28 +65,71 @@ export const SettingsModal = () => {
                 <h3 className="text-lg font-semibold">Cor da Lista de Desejos</h3>
               </div>
               
-              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                <div 
-                  className="w-6 h-6 rounded-full border-2 border-border"
-                  style={{ backgroundColor: wishlistColor }}
-                />
-                <span className="font-medium">Contorno das Cidades na Lista de Desejos</span>
-                
-                <div className="flex gap-2 flex-wrap ml-auto">
-                  {colorOptions.map((color) => (
-                    <button
-                      key={color}
-                      className={`w-8 h-8 rounded-full border-2 hover:scale-110 transition-transform ${
-                        wishlistColor === color 
-                          ? 'border-foreground ring-2 ring-primary' 
-                          : 'border-border'
-                      }`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => setWishlistColor(color)}
-                      title={`Selecionar cor ${color}`}
-                    />
-                  ))}
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-6 h-6 rounded-full border-2 border-border"
+                    style={{ backgroundColor: wishlistColor }}
+                  />
+                  <span className="font-medium">Contorno das Cidades na Lista de Desejos</span>
                 </div>
+                
+                <Select value={wishlistColor} onValueChange={setWishlistColor}>
+                  <SelectTrigger className="w-[120px]">
+                    <div 
+                      className="w-6 h-6 rounded-full border border-border"
+                      style={{ backgroundColor: wishlistColor }}
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover border border-border z-[9999]">
+                    {colorOptions.map((color) => (
+                      <SelectItem key={color.value} value={color.value}>
+                        <div 
+                          className="w-6 h-6 rounded-full border border-border"
+                          style={{ backgroundColor: color.value }}
+                        />
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Tema */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Sun className="h-4 w-4 text-primary" />
+                <h3 className="text-lg font-semibold">Tema</h3>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  {theme === "dark" ? (
+                    <Moon className="h-5 w-5 text-primary" />
+                  ) : (
+                    <Sun className="h-5 w-5 text-primary" />
+                  )}
+                  <span className="font-medium">Modo {theme === "dark" ? "Escuro" : "Claro"}</span>
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+                  className="flex items-center gap-2"
+                >
+                  {theme === "dark" ? (
+                    <>
+                      <Sun className="h-4 w-4" />
+                      Claro
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="h-4 w-4" />
+                      Escuro
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
 
@@ -89,32 +151,38 @@ export const SettingsModal = () => {
                 </Button>
               </div>
               
-              <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-4">
                 {statesData.map((estado) => (
-                  <div key={estado.estado} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div key={estado.estado} className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <div 
-                        className="w-6 h-6 rounded-full border-2 border-border flex-shrink-0"
+                        className="w-4 h-4 rounded-full border border-border flex-shrink-0"
                         style={{ backgroundColor: stateColors[estado.estado] || '#ff7800' }}
                       />
-                      <span className="font-medium truncate">{estado.estado}</span>
+                      <span className="font-medium text-sm truncate">{estado.estado}</span>
                     </div>
                     
-                    <div className="flex gap-1 flex-wrap">
-                      {colorOptions.map((color) => (
-                        <button
-                          key={color}
-                          className={`w-7 h-7 rounded-full border-2 hover:scale-110 transition-transform flex-shrink-0 ${
-                            stateColors[estado.estado] === color 
-                              ? 'border-foreground ring-2 ring-primary' 
-                              : 'border-border'
-                          }`}
-                          style={{ backgroundColor: color }}
-                          onClick={() => setStateColor(estado.estado, color)}
-                          title={`Selecionar cor ${color}`}
+                    <Select 
+                      value={stateColors[estado.estado] || '#ff7800'} 
+                      onValueChange={(color) => setStateColor(estado.estado, color)}
+                    >
+                      <SelectTrigger className="w-[80px] h-8">
+                        <div 
+                          className="w-4 h-4 rounded-full border border-border"
+                          style={{ backgroundColor: stateColors[estado.estado] || '#ff7800' }}
                         />
-                      ))}
-                    </div>
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border border-border z-[9999]">
+                        {colorOptions.map((color) => (
+                          <SelectItem key={color.value} value={color.value}>
+                            <div 
+                              className="w-4 h-4 rounded-full border border-border"
+                              style={{ backgroundColor: color.value }}
+                            />
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 ))}
               </div>
