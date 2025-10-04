@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, Palette, RotateCcw, Heart, Moon, Sun } from 'lucide-react';
+import { Settings, Palette, RotateCcw, Heart, Moon, Sun, Save } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useTheme } from './ThemeProvider';
 import { statesData } from '@/data/mockData';
@@ -33,8 +33,12 @@ const colorOptions = [
 
 export const SettingsModal = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { stateColors, wishlistColor, setStateColor, setWishlistColor, resetStateColors } = useSettings();
+  const { stateColors, wishlistColor, setStateColor, setWishlistColor, resetStateColors, saveSettings, isSaving, hasUnsavedChanges } = useSettings();
   const { theme, setTheme } = useTheme();
+
+  const handleSave = async () => {
+    await saveSettings();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -195,6 +199,17 @@ export const SettingsModal = () => {
             </div>
           </div>
         </ScrollArea>
+
+        <DialogFooter className="border-t border-border pt-4">
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || !hasUnsavedChanges}
+            className="flex items-center gap-2"
+          >
+            <Save className="h-4 w-4" />
+            {isSaving ? 'Salvando...' : 'Salvar Configurações'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

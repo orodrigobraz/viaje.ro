@@ -114,27 +114,21 @@ const Index = () => {
   // Mostrar tela de login se não estiver autenticado
   if (!user) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        
-        <main className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <Card className="w-full max-w-md">
-              <CardContent className="pt-6 text-center space-y-4">
-                <LogIn className="mx-auto h-12 w-12 text-muted-foreground" />
-                <div>
-                  <h2 className="text-xl font-semibold mb-2">Bem-vindo ao Viajero</h2>
-                  <p className="text-muted-foreground mb-4">
-                    Faça login para salvar suas cidades visitadas e criar sua lista de desejos
-                  </p>
-                </div>
-                <Button onClick={() => navigate('/auth')} className="w-full">
-                  Fazer Login / Cadastro
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </main>
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center space-y-4">
+            <LogIn className="mx-auto h-12 w-12 text-muted-foreground" />
+            <div>
+              <h2 className="text-xl font-semibold mb-2">Bem-vindo ao Viajero</h2>
+              <p className="text-muted-foreground mb-4">
+                Faça login para salvar suas cidades visitadas e criar sua lista de desejos
+              </p>
+            </div>
+            <Button onClick={() => navigate('/auth')} className="w-full">
+              Fazer Login / Cadastro
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

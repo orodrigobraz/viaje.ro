@@ -22,25 +22,24 @@ export const WishlistMapView = ({ cities }: WishlistMapViewProps) => {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const { wishlistColor } = useSettings();
   const layersRef = useRef<L.Layer[]>([]);
+  const loadedCitiesRef = useRef<Set<string>>(new Set());
+  const isLoadingRef = useRef(false);
 
+  // Initialize map once
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Inicializar o mapa
-    const map = L.map(mapRef.current, {
-      center: [-14.235, -51.9253], // Centro do Brasil
+    mapInstanceRef.current = L.map(mapRef.current, {
+      center: [-14.235, -51.9253],
       zoom: 4,
       zoomControl: true,
     });
 
-    // Use a minimal style similar to IBGE maps (same as main map)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '© OpenStreetMap contributors © CARTO',
       subdomains: 'abcd',
       maxZoom: 19
-    }).addTo(map);
-
-    mapInstanceRef.current = map;
+    }).addTo(mapInstanceRef.current);
 
     return () => {
       if (mapInstanceRef.current) {
@@ -50,41 +49,64 @@ export const WishlistMapView = ({ cities }: WishlistMapViewProps) => {
     };
   }, []);
 
+  // Update cities
   useEffect(() => {
-    if (!mapInstanceRef.current || !cities.length) return;
+    if (!mapInstanceRef.current || isLoadingRef.current) return;
 
+    const currentCitiesKey = cities.map(c => `${c.properties.nome}-${c.properties.estado}`).sort().join(',');
+    const loadedCitiesKey = Array.from(loadedCitiesRef.current).sort().join(',');
+    
+    if (currentCitiesKey === loadedCitiesKey) return;
+
+    isLoadingRef.current = true;
     const map = mapInstanceRef.current;
 
-    // Remover camadas anteriores
     layersRef.current.forEach(layer => {
       map.removeLayer(layer);
     });
     layersRef.current = [];
+    loadedCitiesRef.current.clear();
 
-    // Função para carregar geometrias das cidades usando a mesma fonte do mapa principal
+    if (cities.length === 0) {
+      isLoadingRef.current = false;
+      return;
+    }
+
     const loadCityGeometriesAndUnify = async () => {
-      const cityFeatures: any[] = [];
+      try {
+        const cityFeatures: any[] = [];
 
-      for (const city of cities) {
-        try {
-          const realGeometry = await findMunicipalityGeometry(
-            city.properties.nome,
-            city.properties.estado
-          );
+        for (const city of cities) {
+          try {
+            const realGeometry = await findMunicipalityGeometry(
+              city.properties.nome,
+              city.properties.estado
+            );
 
-          if (realGeometry) {
-            // Usar geometria real com propriedades corretas
-            cityFeatures.push({
-              type: 'Feature',
-              properties: {
-                nome: city.properties.nome,
-                estado: city.properties.estado,
-                area: realGeometry.properties?.area_km2 || city.properties.area
-              },
-              geometry: realGeometry.geometry
-            });
-          } else {
-            // Fallback para geometria mock
+            if (realGeometry) {
+              cityFeatures.push({
+                type: 'Feature',
+                properties: {
+                  nome: city.properties.nome,
+                  estado: city.properties.estado,
+                  area: realGeometry.properties?.area_km2 || city.properties.area
+                },
+                geometry: realGeometry.geometry
+              });
+            } else {
+              cityFeatures.push({
+                type: 'Feature',
+                properties: {
+                  nome: city.properties.nome,
+                  estado: city.properties.estado,
+                  area: city.properties.area
+                },
+                geometry: city.geometry
+              });
+            }
+            loadedCitiesRef.current.add(`${city.properties.nome}-${city.properties.estado}`);
+          } catch (error) {
+            console.warn(`Erro ao carregar geometria para ${city.properties.nome}:`, error);
             cityFeatures.push({
               type: 'Feature',
               properties: {
@@ -94,48 +116,40 @@ export const WishlistMapView = ({ cities }: WishlistMapViewProps) => {
               },
               geometry: city.geometry
             });
+            loadedCitiesRef.current.add(`${city.properties.nome}-${city.properties.estado}`);
           }
-        } catch (error) {
-          console.warn(`Erro ao carregar geometria para ${city.properties.nome}:`, error);
-          // Fallback para geometria mock
-          cityFeatures.push({
-            type: 'Feature',
-            properties: {
-              nome: city.properties.nome,
-              estado: city.properties.estado,
-              area: city.properties.area
-            },
-            geometry: city.geometry
-          });
         }
-      }
 
-      // Adicionar cada feature ao mapa com cor específica da wishlist
-      cityFeatures.forEach((feature) => {
-        const layer = L.geoJSON(feature, {
-          style: {
-            color: wishlistColor,           // Cor específica da wishlist
-            weight: 2,
-            opacity: 0.8,
-            fillColor: wishlistColor,       // Mesma cor para preenchimento
-            fillOpacity: 0.3               // Mesma opacidade do mapa principal
-          }
-        }).bindPopup(`
-          <div class="p-2">
-            <h3 class="font-semibold text-lg text-purple-800">${feature.properties.nome}</h3>
-            <p class="text-sm text-purple-600">${feature.properties.estado}</p>
-            <p class="text-sm text-purple-600">Área: ${feature.properties.area?.toLocaleString('pt-BR') || 'N/A'} km²</p>
-          </div>
-        `);
+        cityFeatures.forEach((feature) => {
+          const layer = L.geoJSON(feature, {
+            style: {
+              color: wishlistColor,
+              weight: 2,
+              opacity: 0.8,
+              fillColor: wishlistColor,
+              fillOpacity: 0.3
+            }
+          }).bindPopup(`
+            <div class="p-2">
+              <h3 class="font-semibold text-lg text-purple-800">${feature.properties.nome}</h3>
+              <p class="text-sm text-purple-600">${feature.properties.estado}</p>
+              <p class="text-sm text-purple-600">Área: ${feature.properties.area?.toLocaleString('pt-BR') || 'N/A'} km²</p>
+              <p class="text-xs text-purple-500 mt-2 italic">💭 Destino dos sonhos</p>
+            </div>
+          `);
 
-        layer.addTo(map);
-        layersRef.current.push(layer);
-      });
+          layer.addTo(map);
+          layersRef.current.push(layer);
+        });
 
-      // Ajustar zoom para mostrar todas as cidades
-      if (cityFeatures.length > 0) {
-        const group = new L.FeatureGroup(layersRef.current as L.Layer[]);
-        map.fitBounds(group.getBounds(), { padding: [20, 20] });
+        if (layersRef.current.length > 0) {
+          const group = new L.FeatureGroup(layersRef.current as L.Layer[]);
+          map.fitBounds(group.getBounds(), { padding: [20, 20] });
+        }
+      } catch (error) {
+        console.error('Erro ao carregar geometrias:', error);
+      } finally {
+        isLoadingRef.current = false;
       }
     };
 

@@ -23,6 +23,16 @@ export interface City {
     nome: string;
     area: number; // em km²
     estado: string;
+    // Dados completos opcionais da cidade
+    populacao_estimada_censo_2024?: number;
+    populacao_estimada_censo_2022?: number;
+    densidade_demografica_2022?: number;
+    escolarizacao_6a14_2022?: number;
+    idhm_2010?: number;
+    mortalidade_infantil_2023?: string | number;
+    pib_per_capita_2020?: number;
+    gentilico?: string;
+    codigo_ibge?: string;
   };
   geometry: {
     type: "Polygon" | "MultiPolygon" | "Point" | "LineString" | "MultiLineString" | "MultiPoint";

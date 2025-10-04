@@ -101,6 +101,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_settings: {
+        Row: {
+          created_at: string
+          id: string
+          state_colors: Json
+          updated_at: string
+          user_id: string
+          wishlist_color: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          state_colors?: Json
+          updated_at?: string
+          user_id: string
+          wishlist_color?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          state_colors?: Json
+          updated_at?: string
+          user_id?: string
+          wishlist_color?: string
+        }
+        Relationships: []
+      }
       visited_cities: {
         Row: {
           area_km2: number | null
