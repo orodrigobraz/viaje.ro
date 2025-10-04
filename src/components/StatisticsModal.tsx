@@ -108,16 +108,123 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
     };
   }).sort((a, b) => b.percentage - a.percentage);
 
-  // Obter dados completos das cidades visitadas
+  // Obter dados completos das cidades visitadas (filtrar nulos)
   const visitedCitiesData = cities.map(city => {
     const cityData = citiesData.find(c => 
       c.nome.toLowerCase() === city.properties.nome.toLowerCase() && 
       c.estado.toLowerCase() === city.properties.estado.toLowerCase()
     );
     return cityData;
-  }).filter(Boolean);
+  }).filter((city): city is NonNullable<typeof city> => city !== null && city !== undefined);
 
-  // Calcular cidades extremas apenas se houver cidades
+  // Cidades com dados populacionais válidos
+  const citiesWithPopulation = visitedCitiesData.filter(c => 
+    c.populacao_estimada_censo_2024 != null && c.populacao_estimada_censo_2024 > 0
+  );
+
+  // Cidades extremas por população (2024)
+  const largestCityByPopulation = citiesWithPopulation.length > 0 
+    ? citiesWithPopulation.reduce((prev, current) => 
+        (prev.populacao_estimada_censo_2024 > current.populacao_estimada_censo_2024) ? prev : current
+      ) 
+    : null;
+  
+  const smallestCityByPopulation = citiesWithPopulation.length > 0 
+    ? citiesWithPopulation.reduce((prev, current) => 
+        (prev.populacao_estimada_censo_2024 < current.populacao_estimada_censo_2024) ? prev : current
+      ) 
+    : null;
+
+  // Cidades com dados de densidade válidos
+  const citiesWithDensity = visitedCitiesData.filter(c => 
+    c.densidade_demografica_2022 != null && c.densidade_demografica_2022 > 0
+  );
+
+  // Cidades extremas por densidade demográfica
+  const highestDensityCity = citiesWithDensity.length > 0 
+    ? citiesWithDensity.reduce((prev, current) => 
+        (prev.densidade_demografica_2022 > current.densidade_demografica_2022) ? prev : current
+      ) 
+    : null;
+  
+  const lowestDensityCity = citiesWithDensity.length > 0 
+    ? citiesWithDensity.reduce((prev, current) => 
+        (prev.densidade_demografica_2022 < current.densidade_demografica_2022) ? prev : current
+      ) 
+    : null;
+
+  // Cidades com dados de escolarização válidos
+  const citiesWithSchooling = visitedCitiesData.filter(c => 
+    c.escolarizacao_6a14_2022 != null && c.escolarizacao_6a14_2022 > 0
+  );
+
+  // Cidades com maior e menor escolarização
+  const maxSchooling = citiesWithSchooling.length > 0 
+    ? Math.max(...citiesWithSchooling.map(c => c.escolarizacao_6a14_2022)) 
+    : 0;
+  const minSchooling = citiesWithSchooling.length > 0 
+    ? Math.min(...citiesWithSchooling.map(c => c.escolarizacao_6a14_2022)) 
+    : 0;
+  
+  const highestSchoolingCities = citiesWithSchooling.filter(c => c.escolarizacao_6a14_2022 === maxSchooling);
+  const lowestSchoolingCities = citiesWithSchooling.filter(c => c.escolarizacao_6a14_2022 === minSchooling);
+
+  // Cidades com dados de IDHM válidos
+  const citiesWithIDHM = visitedCitiesData.filter(c => 
+    c.idhm_2010 != null && c.idhm_2010 > 0
+  );
+
+  // Cidades com maior e menor IDHM
+  const maxIDHM = citiesWithIDHM.length > 0 
+    ? Math.max(...citiesWithIDHM.map(c => c.idhm_2010)) 
+    : 0;
+  const minIDHM = citiesWithIDHM.length > 0 
+    ? Math.min(...citiesWithIDHM.map(c => c.idhm_2010)) 
+    : 0;
+  
+  const highestIDHMCities = citiesWithIDHM.filter(c => c.idhm_2010 === maxIDHM);
+  const lowestIDHMCities = citiesWithIDHM.filter(c => c.idhm_2010 === minIDHM);
+
+  // Cidades com dados de PIB válidos
+  const citiesWithPIB = visitedCitiesData.filter(c => 
+    c.pib_per_capita_2020 != null && c.pib_per_capita_2020 > 0
+  );
+
+  // Cidades com maior e menor PIB per capita
+  const maxPIB = citiesWithPIB.length > 0 
+    ? Math.max(...citiesWithPIB.map(c => c.pib_per_capita_2020)) 
+    : 0;
+  const minPIB = citiesWithPIB.length > 0 
+    ? Math.min(...citiesWithPIB.map(c => c.pib_per_capita_2020)) 
+    : 0;
+  
+  const highestPIBCities = citiesWithPIB.filter(c => c.pib_per_capita_2020 === maxPIB);
+  const lowestPIBCities = citiesWithPIB.filter(c => c.pib_per_capita_2020 === minPIB);
+
+  // Cidades com variação populacional válida
+  const citiesWithPopulationChange = visitedCitiesData
+    .filter(city => 
+      city.populacao_estimada_censo_2022 != null && 
+      city.populacao_estimada_censo_2024 != null &&
+      city.populacao_estimada_censo_2022 > 0
+    )
+    .map(city => ({
+      ...city,
+      changePercent: ((city.populacao_estimada_censo_2024 - city.populacao_estimada_censo_2022) / city.populacao_estimada_censo_2022) * 100
+    }))
+    .filter(city => Math.abs(city.changePercent) > 0);
+
+  const maxPopulationChange = citiesWithPopulationChange.length > 0 
+    ? Math.max(...citiesWithPopulationChange.map(c => c.changePercent)) 
+    : 0;
+  const minPopulationChange = citiesWithPopulationChange.length > 0 
+    ? Math.min(...citiesWithPopulationChange.map(c => c.changePercent)) 
+    : 0;
+    
+  const highestPopulationChangeCities = citiesWithPopulationChange.filter(c => c.changePercent === maxPopulationChange);
+  const lowestPopulationChangeCities = citiesWithPopulationChange.filter(c => c.changePercent === minPopulationChange);
+
+  // Calcular cidades extremas por área apenas se houver cidades
   const largestCityByArea = cities.length > 0 ? cities.reduce((prev, current) => 
     (prev.properties.area > current.properties.area) ? prev : current
   ) : null;
@@ -125,45 +232,6 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
   const smallestCityByArea = cities.length > 0 ? cities.reduce((prev, current) => 
     (prev.properties.area < current.properties.area) ? prev : current
   ) : null;
-
-  // Cidades extremas por população (2024)
-  const largestCityByPopulation = visitedCitiesData.length > 0 ? visitedCitiesData.reduce((prev, current) => 
-    (prev.populacao_estimada_censo_2024 > current.populacao_estimada_censo_2024) ? prev : current
-  ) : null;
-  
-  const smallestCityByPopulation = visitedCitiesData.length > 0 ? visitedCitiesData.reduce((prev, current) => 
-    (prev.populacao_estimada_censo_2024 < current.populacao_estimada_censo_2024) ? prev : current
-  ) : null;
-
-  // Cidades extremas por densidade demográfica
-  const highestDensityCity = visitedCitiesData.length > 0 ? visitedCitiesData.reduce((prev, current) => 
-    (prev.densidade_demografica_2022 > current.densidade_demografica_2022) ? prev : current
-  ) : null;
-  
-  const lowestDensityCity = visitedCitiesData.length > 0 ? visitedCitiesData.reduce((prev, current) => 
-    (prev.densidade_demografica_2022 < current.densidade_demografica_2022) ? prev : current
-  ) : null;
-
-  // Cidades com maior e menor escolarização
-  const maxSchooling = visitedCitiesData.length > 0 ? Math.max(...visitedCitiesData.map(c => c.escolarizacao_6a14_2022)) : 0;
-  const minSchooling = visitedCitiesData.length > 0 ? Math.min(...visitedCitiesData.map(c => c.escolarizacao_6a14_2022)) : 0;
-  
-  const highestSchoolingCities = visitedCitiesData.filter(c => c.escolarizacao_6a14_2022 === maxSchooling);
-  const lowestSchoolingCities = visitedCitiesData.filter(c => c.escolarizacao_6a14_2022 === minSchooling);
-
-  // Cidades com maior e menor IDHM
-  const maxIDHM = visitedCitiesData.length > 0 ? Math.max(...visitedCitiesData.map(c => c.idhm_2010)) : 0;
-  const minIDHM = visitedCitiesData.length > 0 ? Math.min(...visitedCitiesData.map(c => c.idhm_2010)) : 0;
-  
-  const highestIDHMCities = visitedCitiesData.filter(c => c.idhm_2010 === maxIDHM);
-  const lowestIDHMCities = visitedCitiesData.filter(c => c.idhm_2010 === minIDHM);
-
-  // Cidades com maior e menor PIB per capita
-  const maxPIB = visitedCitiesData.length > 0 ? Math.max(...visitedCitiesData.map(c => c.pib_per_capita_2020)) : 0;
-  const minPIB = visitedCitiesData.length > 0 ? Math.min(...visitedCitiesData.map(c => c.pib_per_capita_2020)) : 0;
-  
-  const highestPIBCities = visitedCitiesData.filter(c => c.pib_per_capita_2020 === maxPIB);
-  const lowestPIBCities = visitedCitiesData.filter(c => c.pib_per_capita_2020 === minPIB);
 
   // Configuração do gráfico de pizza para distribuição por estado
   const getStateDistributionChart = () => {
@@ -507,6 +575,100 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
     };
   };
 
+  // Gráfico de variação populacional
+  const getPopulationChangeChart = () => {
+    if (visitedCitiesData.length === 0) return null;
+
+    const citiesWithChange = visitedCitiesData
+      .map(city => ({
+        ...city,
+        changePercent: city.populacao_estimada_censo_2022 > 0 
+          ? ((city.populacao_estimada_censo_2024 - city.populacao_estimada_censo_2022) / city.populacao_estimada_censo_2022) * 100
+          : 0
+      }))
+      .filter(city => Math.abs(city.changePercent) > 0)
+      .sort((a, b) => b.changePercent - a.changePercent);
+
+    if (citiesWithChange.length === 0) return null;
+
+    const positiveChanges = citiesWithChange.filter(c => c.changePercent > 0).slice(0, 10);
+    const negativeChanges = citiesWithChange.filter(c => c.changePercent < 0).slice(-10);
+    
+    const allData = [...positiveChanges, ...negativeChanges].sort((a, b) => b.changePercent - a.changePercent);
+
+    return {
+      title: {
+        text: 'Variação Populacional (2022-2024)',
+        left: 'center',
+        textStyle: { fontSize: 14 }
+      },
+      tooltip: {
+        trigger: 'axis',
+        formatter: (params: any) => {
+          const data = params[0];
+          const change = data.value > 0 ? 'aumento' : 'diminuição';
+          const population2022 = data.data.populacao_estimada_censo_2022;
+          const population2024 = data.data.populacao_estimada_censo_2024;
+          return `${data.name} - ${data.data.estado}<br/>
+                  População 2022: ${population2022.toLocaleString('pt-BR')} hab<br/>
+                  População 2024: ${population2024.toLocaleString('pt-BR')} hab<br/>
+                  Variação: ${Math.abs(data.value).toFixed(2)}% (${change})`;
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: '15%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: (value: number) => `${value.toFixed(1)}%`
+        },
+        axisLine: {
+          show: true
+        },
+        splitLine: {
+          show: true,
+          lineStyle: {
+            color: '#e0e0e0'
+          }
+        }
+      },
+      yAxis: {
+        type: 'category',
+        data: allData.map(d => d.nome),
+        inverse: true,
+        axisLabel: {
+          fontSize: 10
+        }
+      },
+      series: [{
+        name: 'Variação %',
+        type: 'bar',
+        data: allData.map(city => ({
+          value: city.changePercent,
+          populacao_estimada_censo_2022: city.populacao_estimada_censo_2022,
+          populacao_estimada_censo_2024: city.populacao_estimada_censo_2024,
+          estado: city.estado
+        })),
+        itemStyle: {
+          color: (params: any) => {
+            return params.value > 0 ? '#10b981' : '#ef4444';
+          }
+        },
+        emphasis: {
+          itemStyle: {
+            opacity: 0.8
+          }
+        },
+        barWidth: '60%'
+      }]
+    };
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -518,17 +680,17 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
           Ver Estatísticas Completas
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto z-[9999] bg-background border border-border">
-        <DialogHeader className="bg-background border-b border-border pb-4">
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto z-[9999] bg-background border border-border">
+        <DialogHeader className="bg-background border-b border-border pb-4 sticky top-0 z-10">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <BarChart3 className="h-5 w-5 text-primary" />
-            Estatísticas Detalhadas - Viaje.ro
+            <span className="truncate">Estatísticas Detalhadas - Viaje.ro</span>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6 p-1">
           {/* Estatísticas Gerais */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -537,7 +699,7 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-teal">
+                <p className="text-xl sm:text-2xl font-bold text-teal">
                   {cities.length}
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -554,7 +716,7 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-primary">
+                <p className="text-xl sm:text-2xl font-bold text-primary">
                   {totalArea.toLocaleString('pt-BR')} km²
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -571,7 +733,7 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-orange">
+                <p className="text-xl sm:text-2xl font-bold text-orange">
                   {brazilPercentage.toFixed(4)}%
                 </p>
                 <p className="text-sm text-muted-foreground">
@@ -602,73 +764,84 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
               </CardHeader>
               {showCharts && (
                 <CardContent>
-                  <div className="grid gap-6">
-                    {/* Gráfico de Distribuição por Estado */}
-                    {statePercentages.length > 0 && getStateDistributionChart() && (
-                      <div>
-                        <ReactECharts 
-                          option={getStateDistributionChart()} 
-                          style={{ height: '400px', width: '100%' }}
-                          opts={{ renderer: 'svg' }}
-                        />
-                      </div>
-                    )}
+                    <div className="grid gap-6">
+                      {/* Gráfico de Distribuição por Estado */}
+                      {statePercentages.length > 0 && getStateDistributionChart() && (
+                        <div>
+                          <ReactECharts 
+                            option={getStateDistributionChart()} 
+                            style={{ height: '300px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      )}
 
-                    {/* Gráfico de Cobertura por Estado */}
-                    {statePercentages.length > 0 && getStatePercentageChart() && (
-                      <div>
-                        <ReactECharts 
-                          option={getStatePercentageChart()} 
-                          style={{ height: '400px', width: '100%' }}
-                          opts={{ renderer: 'svg' }}
-                        />
-                      </div>
-                    )}
+                      {/* Gráfico de Cobertura por Estado */}
+                      {statePercentages.length > 0 && getStatePercentageChart() && (
+                        <div>
+                          <ReactECharts 
+                            option={getStatePercentageChart()} 
+                            style={{ height: '350px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      )}
 
-                    {/* Gráfico de População */}
-                    {getPopulationChart() && (
-                      <div>
-                        <ReactECharts 
-                          option={getPopulationChart()} 
-                          style={{ height: '350px', width: '100%' }}
-                          opts={{ renderer: 'svg' }}
-                        />
-                      </div>
-                    )}
+                      {/* Gráfico de População */}
+                      {getPopulationChart() && (
+                        <div>
+                          <ReactECharts 
+                            option={getPopulationChart()} 
+                            style={{ height: '300px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      )}
 
-                    {/* Gráfico de Densidade */}
-                    {getDensityChart() && (
-                      <div>
-                        <ReactECharts 
-                          option={getDensityChart()} 
-                          style={{ height: '350px', width: '100%' }}
-                          opts={{ renderer: 'svg' }}
-                        />
-                      </div>
-                    )}
+                      {/* Gráfico de Densidade */}
+                      {getDensityChart() && (
+                        <div>
+                          <ReactECharts 
+                            option={getDensityChart()} 
+                            style={{ height: '300px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      )}
 
-                    {/* Gráfico de IDHM */}
-                    {getIDHMChart() && (
-                      <div>
-                        <ReactECharts 
-                          option={getIDHMChart()} 
-                          style={{ height: '350px', width: '100%' }}
-                          opts={{ renderer: 'svg' }}
-                        />
-                      </div>
-                    )}
+                      {/* Gráfico de IDHM */}
+                      {getIDHMChart() && (
+                        <div>
+                          <ReactECharts 
+                            option={getIDHMChart()} 
+                            style={{ height: '300px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      )}
 
-                    {/* Gráfico de PIB per capita */}
-                    {getPIBChart() && (
-                      <div>
-                        <ReactECharts 
-                          option={getPIBChart()} 
-                          style={{ height: '350px', width: '100%' }}
-                          opts={{ renderer: 'svg' }}
-                        />
-                      </div>
-                    )}
-                  </div>
+                      {/* Gráfico de PIB per capita */}
+                      {getPIBChart() && (
+                        <div>
+                          <ReactECharts 
+                            option={getPIBChart()} 
+                            style={{ height: '400px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Gráfico de Variação Populacional */}
+                      {getPopulationChangeChart() && (
+                        <div>
+                          <ReactECharts 
+                            option={getPopulationChangeChart()} 
+                            style={{ height: '400px', width: '100%' }}
+                            opts={{ renderer: 'svg' }}
+                          />
+                        </div>
+                      )}
+                    </div>
                 </CardContent>
               )}
             </Card>
@@ -686,24 +859,24 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
                   {largestCityByArea && smallestCityByArea && (
                     <div>
                       <h5 className="font-medium mb-3 text-muted-foreground">Por Área Territorial</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                           <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="h-4 w-4 text-green-600" />
                             <h4 className="font-semibold text-green-700 dark:text-green-400">Maior</h4>
                           </div>
-                          <p className="text-lg font-bold text-green-800 dark:text-green-300">{largestCityByArea.properties.nome}</p>
+                          <p className="text-base sm:text-lg font-bold text-green-800 dark:text-green-300 truncate">{largestCityByArea.properties.nome}</p>
                           <p className="text-sm text-green-600 dark:text-green-400">
                             {largestCityByArea.properties.estado} • {largestCityByArea.properties.area.toLocaleString('pt-BR')} km²
                           </p>
                         </div>
                         
-                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                           <div className="flex items-center gap-2 mb-2">
                             <TrendingDown className="h-4 w-4 text-blue-600" />
                             <h4 className="font-semibold text-blue-700 dark:text-blue-400">Menor</h4>
                           </div>
-                          <p className="text-lg font-bold text-blue-800 dark:text-blue-300">{smallestCityByArea.properties.nome}</p>
+                          <p className="text-base sm:text-lg font-bold text-blue-800 dark:text-blue-300 truncate">{smallestCityByArea.properties.nome}</p>
                           <p className="text-sm text-blue-600 dark:text-blue-400">
                             {smallestCityByArea.properties.estado} • {smallestCityByArea.properties.area.toLocaleString('pt-BR')} km²
                           </p>
@@ -712,167 +885,205 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
                     </div>
                   )}
 
-                  {/* Por População */}
-                  {largestCityByPopulation && smallestCityByPopulation && (
-                    <div>
-                      <h5 className="font-medium mb-3 text-muted-foreground">Por População (Censo 2024)</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Users className="h-4 w-4 text-purple-600" />
-                            <h4 className="font-semibold text-purple-700 dark:text-purple-400">Mais Populosa</h4>
-                          </div>
-                          <p className="text-lg font-bold text-purple-800 dark:text-purple-300">{largestCityByPopulation.nome}</p>
-                          <p className="text-sm text-purple-600 dark:text-purple-400">
-                            {largestCityByPopulation.estado} • {largestCityByPopulation.populacao_estimada_censo_2024.toLocaleString('pt-BR')} hab
-                          </p>
-                        </div>
-                        
-                        <div className="p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Users className="h-4 w-4 text-indigo-600" />
-                            <h4 className="font-semibold text-indigo-700 dark:text-indigo-400">Menos Populosa</h4>
-                          </div>
-                          <p className="text-lg font-bold text-indigo-800 dark:text-indigo-300">{smallestCityByPopulation.nome}</p>
-                          <p className="text-sm text-indigo-600 dark:text-indigo-400">
-                            {smallestCityByPopulation.estado} • {smallestCityByPopulation.populacao_estimada_censo_2024.toLocaleString('pt-BR')} hab
-                          </p>
+                   {/* Por População */}
+                   {largestCityByPopulation && smallestCityByPopulation && (
+                     <div>
+                       <h5 className="font-medium mb-3 text-muted-foreground">Por População (Censo 2024)</h5>
+                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                         <div className="p-3 sm:p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                           <div className="flex items-center gap-2 mb-2">
+                             <Users className="h-4 w-4 text-purple-600" />
+                             <h4 className="font-semibold text-purple-700 dark:text-purple-400">Mais Populosa</h4>
+                           </div>
+                           <p className="text-base sm:text-lg font-bold text-purple-800 dark:text-purple-300 truncate">{largestCityByPopulation.nome}</p>
+                           <p className="text-sm text-purple-600 dark:text-purple-400">
+                             {largestCityByPopulation.estado} • {largestCityByPopulation.populacao_estimada_censo_2024.toLocaleString('pt-BR')} hab
+                           </p>
+                         </div>
+                         
+                         <div className="p-3 sm:p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                           <div className="flex items-center gap-2 mb-2">
+                             <Users className="h-4 w-4 text-indigo-600" />
+                             <h4 className="font-semibold text-indigo-700 dark:text-indigo-400">Menos Populosa</h4>
+                           </div>
+                           <p className="text-base sm:text-lg font-bold text-indigo-800 dark:text-indigo-300 truncate">{smallestCityByPopulation.nome}</p>
+                           <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                             {smallestCityByPopulation.estado} • {smallestCityByPopulation.populacao_estimada_censo_2024.toLocaleString('pt-BR')} hab
+                           </p>
+                         </div>
+                       </div>
+                     </div>
+                   )}
+
+                   {/* Por Densidade Demográfica */}
+                   {highestDensityCity && lowestDensityCity && (
+                     <div>
+                       <h5 className="font-medium mb-3 text-muted-foreground">Por Densidade Demográfica</h5>
+                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                         <div className="p-3 sm:p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                           <div className="flex items-center gap-2 mb-2">
+                             <Building className="h-4 w-4 text-orange-600" />
+                             <h4 className="font-semibold text-orange-700 dark:text-orange-400">Maior Densidade</h4>
+                           </div>
+                           <p className="text-base sm:text-lg font-bold text-orange-800 dark:text-orange-300 truncate">{highestDensityCity.nome}</p>
+                           <p className="text-sm text-orange-600 dark:text-orange-400">
+                             {highestDensityCity.estado} • {highestDensityCity.densidade_demografica_2022.toLocaleString('pt-BR')} hab/km²
+                           </p>
+                         </div>
+                         
+                         <div className="p-3 sm:p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                           <div className="flex items-center gap-2 mb-2">
+                             <Building className="h-4 w-4 text-amber-600" />
+                             <h4 className="font-semibold text-amber-700 dark:text-amber-400">Menor Densidade</h4>
+                           </div>
+                           <p className="text-base sm:text-lg font-bold text-amber-800 dark:text-amber-300 truncate">{lowestDensityCity.nome}</p>
+                           <p className="text-sm text-amber-600 dark:text-amber-400">
+                             {lowestDensityCity.estado} • {lowestDensityCity.densidade_demografica_2022.toLocaleString('pt-BR')} hab/km²
+                           </p>
+                         </div>
+                       </div>
+                     </div>
+                   )}
+
+                    {/* Por Escolarização */}
+                    {highestSchoolingCities.length > 0 && lowestSchoolingCities.length > 0 && (
+                      <div>
+                        <h5 className="font-medium mb-3 text-muted-foreground">Por Índice de Escolarização</h5>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                          <ExpandableCityList
+                            cities={highestSchoolingCities}
+                            bgColorClass="bg-teal-50 dark:bg-teal-900/20"
+                            textColorClass="text-teal-800 dark:text-teal-300"
+                            borderColorClass="border-teal-200 dark:border-teal-800"
+                            iconColorClass="text-teal-600"
+                            titleColorClass="text-teal-700 dark:text-teal-400"
+                            subtitleColorClass="text-teal-600 dark:text-teal-400"
+                            icon={GraduationCap}
+                            value={(city) => `${city.escolarizacao_6a14_2022.toFixed(1)}%`}
+                            unit={`Maior${highestSchoolingCities.length > 1 ? 'es' : ''} Índice${highestSchoolingCities.length > 1 ? 's' : ''}`}
+                          />
+                          
+                          <ExpandableCityList
+                            cities={lowestSchoolingCities}
+                            bgColorClass="bg-cyan-50 dark:bg-cyan-900/20"
+                            textColorClass="text-cyan-800 dark:text-cyan-300"
+                            borderColorClass="border-cyan-200 dark:border-cyan-800"
+                            iconColorClass="text-cyan-600"
+                            titleColorClass="text-cyan-700 dark:text-cyan-400"
+                            subtitleColorClass="text-cyan-600 dark:text-cyan-400"
+                            icon={GraduationCap}
+                            value={(city) => `${city.escolarizacao_6a14_2022.toFixed(1)}%`}
+                            unit={`Menor${lowestSchoolingCities.length > 1 ? 'es' : ''} Índice${lowestSchoolingCities.length > 1 ? 's' : ''}`}
+                          />
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Por Densidade Demográfica */}
-                  {highestDensityCity && lowestDensityCity && (
-                    <div>
-                      <h5 className="font-medium mb-3 text-muted-foreground">Por Densidade Demográfica</h5>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Building className="h-4 w-4 text-orange-600" />
-                            <h4 className="font-semibold text-orange-700 dark:text-orange-400">Maior Densidade</h4>
-                          </div>
-                          <p className="text-lg font-bold text-orange-800 dark:text-orange-300">{highestDensityCity.nome}</p>
-                          <p className="text-sm text-orange-600 dark:text-orange-400">
-                            {highestDensityCity.estado} • {highestDensityCity.densidade_demografica_2022.toLocaleString('pt-BR')} hab/km²
-                          </p>
-                        </div>
-                        
-                        <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Building className="h-4 w-4 text-amber-600" />
-                            <h4 className="font-semibold text-amber-700 dark:text-amber-400">Menor Densidade</h4>
-                          </div>
-                          <p className="text-lg font-bold text-amber-800 dark:text-amber-300">{lowestDensityCity.nome}</p>
-                          <p className="text-sm text-amber-600 dark:text-amber-400">
-                            {lowestDensityCity.estado} • {lowestDensityCity.densidade_demografica_2022.toLocaleString('pt-BR')} hab/km²
-                          </p>
+                    {/* Por IDHM */}
+                    {highestIDHMCities.length > 0 && lowestIDHMCities.length > 0 && (
+                      <div>
+                        <h5 className="font-medium mb-3 text-muted-foreground">Por IDHM (2010)</h5>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                          <ExpandableCityList
+                            cities={highestIDHMCities}
+                            bgColorClass="bg-emerald-50 dark:bg-emerald-900/20"
+                            textColorClass="text-emerald-800 dark:text-emerald-300"
+                            borderColorClass="border-emerald-200 dark:border-emerald-800"
+                            iconColorClass="text-emerald-600"
+                            titleColorClass="text-emerald-700 dark:text-emerald-400"
+                            subtitleColorClass="text-emerald-600 dark:text-emerald-400"
+                            icon={Heart}
+                            value={(city) => city.idhm_2010.toFixed(3)}
+                            unit={`Maior${highestIDHMCities.length > 1 ? 'es' : ''} IDHM`}
+                          />
+                          
+                          <ExpandableCityList
+                            cities={lowestIDHMCities}
+                            bgColorClass="bg-red-50 dark:bg-red-900/20"
+                            textColorClass="text-red-800 dark:text-red-300"
+                            borderColorClass="border-red-200 dark:border-red-800"
+                            iconColorClass="text-red-600"
+                            titleColorClass="text-red-700 dark:text-red-400"
+                            subtitleColorClass="text-red-600 dark:text-red-400"
+                            icon={Heart}
+                            value={(city) => city.idhm_2010.toFixed(3)}
+                            unit={`Menor${lowestIDHMCities.length > 1 ? 'es' : ''} IDHM`}
+                          />
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                   {/* Por Escolarização */}
-                   {highestSchoolingCities.length > 0 && lowestSchoolingCities.length > 0 && (
-                     <div>
-                       <h5 className="font-medium mb-3 text-muted-foreground">Por Índice de Escolarização</h5>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <ExpandableCityList
-                           cities={highestSchoolingCities}
-                           bgColorClass="bg-teal-50 dark:bg-teal-900/20"
-                           textColorClass="text-teal-800 dark:text-teal-300"
-                           borderColorClass="border-teal-200 dark:border-teal-800"
-                           iconColorClass="text-teal-600"
-                           titleColorClass="text-teal-700 dark:text-teal-400"
-                           subtitleColorClass="text-teal-600 dark:text-teal-400"
-                           icon={GraduationCap}
-                           value={(city) => `${city.escolarizacao_6a14_2022.toFixed(1)}%`}
-                           unit={`Maior${highestSchoolingCities.length > 1 ? 'es' : ''} Índice${highestSchoolingCities.length > 1 ? 's' : ''}`}
-                         />
-                         
-                         <ExpandableCityList
-                           cities={lowestSchoolingCities}
-                           bgColorClass="bg-cyan-50 dark:bg-cyan-900/20"
-                           textColorClass="text-cyan-800 dark:text-cyan-300"
-                           borderColorClass="border-cyan-200 dark:border-cyan-800"
-                           iconColorClass="text-cyan-600"
-                           titleColorClass="text-cyan-700 dark:text-cyan-400"
-                           subtitleColorClass="text-cyan-600 dark:text-cyan-400"
-                           icon={GraduationCap}
-                           value={(city) => `${city.escolarizacao_6a14_2022.toFixed(1)}%`}
-                           unit={`Menor${lowestSchoolingCities.length > 1 ? 'es' : ''} Índice${lowestSchoolingCities.length > 1 ? 's' : ''}`}
-                         />
+                     {/* Por PIB per Capita */}
+                     {highestPIBCities.length > 0 && lowestPIBCities.length > 0 && (
+                       <div>
+                         <h5 className="font-medium mb-3 text-muted-foreground">Por PIB per Capita (2020)</h5>
+                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                           <ExpandableCityList
+                             cities={highestPIBCities}
+                             bgColorClass="bg-yellow-50 dark:bg-yellow-900/20"
+                             textColorClass="text-yellow-800 dark:text-yellow-300"
+                             borderColorClass="border-yellow-200 dark:border-yellow-800"
+                             iconColorClass="text-yellow-600"
+                             titleColorClass="text-yellow-700 dark:text-yellow-400"
+                             subtitleColorClass="text-yellow-600 dark:text-yellow-400"
+                             icon={DollarSign}
+                             value={(city) => `R$ ${city.pib_per_capita_2020.toLocaleString('pt-BR')}`}
+                             unit={`Maior${highestPIBCities.length > 1 ? 'es' : ''} PIB per Capita`}
+                           />
+                           
+                           <ExpandableCityList
+                             cities={lowestPIBCities}
+                             bgColorClass="bg-gray-50 dark:bg-gray-900/20"
+                             textColorClass="text-gray-800 dark:text-gray-300"
+                             borderColorClass="border-gray-200 dark:border-gray-800"
+                             iconColorClass="text-gray-600"
+                             titleColorClass="text-gray-700 dark:text-gray-400"
+                             subtitleColorClass="text-gray-600 dark:text-gray-400"
+                             icon={DollarSign}
+                             value={(city) => `R$ ${city.pib_per_capita_2020.toLocaleString('pt-BR')}`}
+                             unit={`Menor${lowestPIBCities.length > 1 ? 'es' : ''} PIB per Capita`}
+                           />
+                         </div>
                        </div>
-                     </div>
-                   )}
+                     )}
 
-                   {/* Por IDHM */}
-                   {highestIDHMCities.length > 0 && lowestIDHMCities.length > 0 && (
-                     <div>
-                       <h5 className="font-medium mb-3 text-muted-foreground">Por IDHM (2010)</h5>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <ExpandableCityList
-                           cities={highestIDHMCities}
-                           bgColorClass="bg-emerald-50 dark:bg-emerald-900/20"
-                           textColorClass="text-emerald-800 dark:text-emerald-300"
-                           borderColorClass="border-emerald-200 dark:border-emerald-800"
-                           iconColorClass="text-emerald-600"
-                           titleColorClass="text-emerald-700 dark:text-emerald-400"
-                           subtitleColorClass="text-emerald-600 dark:text-emerald-400"
-                           icon={Heart}
-                           value={(city) => city.idhm_2010.toFixed(3)}
-                           unit={`Maior${highestIDHMCities.length > 1 ? 'es' : ''} IDHM`}
-                         />
-                         
-                         <ExpandableCityList
-                           cities={lowestIDHMCities}
-                           bgColorClass="bg-red-50 dark:bg-red-900/20"
-                           textColorClass="text-red-800 dark:text-red-300"
-                           borderColorClass="border-red-200 dark:border-red-800"
-                           iconColorClass="text-red-600"
-                           titleColorClass="text-red-700 dark:text-red-400"
-                           subtitleColorClass="text-red-600 dark:text-red-400"
-                           icon={Heart}
-                           value={(city) => city.idhm_2010.toFixed(3)}
-                           unit={`Menor${lowestIDHMCities.length > 1 ? 'es' : ''} IDHM`}
-                         />
+                     {/* Por Variação Populacional */}
+                     {highestPopulationChangeCities.length > 0 && lowestPopulationChangeCities.length > 0 && (
+                       <div>
+                         <h5 className="font-medium mb-3 text-muted-foreground">Por Variação Populacional (2022-2024)</h5>
+                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                           <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                             <div className="flex items-center gap-2 mb-2">
+                               <TrendingUp className="h-4 w-4 text-green-600" />
+                               <h4 className="font-semibold text-green-700 dark:text-green-400">Maior Crescimento</h4>
+                             </div>
+                             {highestPopulationChangeCities.map((city, index) => (
+                               <div key={index} className={index > 0 ? 'mt-2' : ''}>
+                                 <p className="text-base sm:text-lg font-bold text-green-800 dark:text-green-300 truncate">{city.nome}</p>
+                                 <p className="text-sm text-green-600 dark:text-green-400">
+                                   {city.estado} • +{city.changePercent.toFixed(2)}%
+                                 </p>
+                               </div>
+                             ))}
+                           </div>
+                           
+                           <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                             <div className="flex items-center gap-2 mb-2">
+                               <TrendingDown className="h-4 w-4 text-red-600" />
+                               <h4 className="font-semibold text-red-700 dark:text-red-400">Maior Redução</h4>
+                             </div>
+                             {lowestPopulationChangeCities.map((city, index) => (
+                               <div key={index} className={index > 0 ? 'mt-2' : ''}>
+                                 <p className="text-base sm:text-lg font-bold text-red-800 dark:text-red-300 truncate">{city.nome}</p>
+                                 <p className="text-sm text-red-600 dark:text-red-400">
+                                   {city.estado} • {city.changePercent.toFixed(2)}%
+                                 </p>
+                               </div>
+                             ))}
+                           </div>
+                         </div>
                        </div>
-                     </div>
-                   )}
-
-                   {/* Por PIB per Capita */}
-                   {highestPIBCities.length > 0 && lowestPIBCities.length > 0 && (
-                     <div>
-                       <h5 className="font-medium mb-3 text-muted-foreground">Por PIB per Capita (2020)</h5>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <ExpandableCityList
-                           cities={highestPIBCities}
-                           bgColorClass="bg-yellow-50 dark:bg-yellow-900/20"
-                           textColorClass="text-yellow-800 dark:text-yellow-300"
-                           borderColorClass="border-yellow-200 dark:border-yellow-800"
-                           iconColorClass="text-yellow-600"
-                           titleColorClass="text-yellow-700 dark:text-yellow-400"
-                           subtitleColorClass="text-yellow-600 dark:text-yellow-400"
-                           icon={DollarSign}
-                           value={(city) => `R$ ${city.pib_per_capita_2020.toLocaleString('pt-BR')}`}
-                           unit={`Maior${highestPIBCities.length > 1 ? 'es' : ''} PIB per Capita`}
-                         />
-                         
-                         <ExpandableCityList
-                           cities={lowestPIBCities}
-                           bgColorClass="bg-gray-50 dark:bg-gray-900/20"
-                           textColorClass="text-gray-800 dark:text-gray-300"
-                           borderColorClass="border-gray-200 dark:border-gray-800"
-                           iconColorClass="text-gray-600"
-                           titleColorClass="text-gray-700 dark:text-gray-400"
-                           subtitleColorClass="text-gray-600 dark:text-gray-400"
-                           icon={DollarSign}
-                           value={(city) => `R$ ${city.pib_per_capita_2020.toLocaleString('pt-BR')}`}
-                           unit={`Menor${lowestPIBCities.length > 1 ? 'es' : ''} PIB per Capita`}
-                         />
-                       </div>
-                     </div>
-                   )}
+                     )}
                 </div>
               </CardContent>
             </Card>

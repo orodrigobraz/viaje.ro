@@ -25,7 +25,7 @@ const App = () => (
               className: 'text-base'
             }}
           />
-          <BrowserRouter>{/*basename="/viaje.ro/" */}
+          <BrowserRouter basename="/viaje.ro/">{/* adicionar: basename="/viaje.ro/" */}
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />

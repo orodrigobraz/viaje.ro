@@ -55,103 +55,153 @@ export const MapView = ({ cities }: MapViewProps) => {
   const [selectedCity, setSelectedCity] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { stateColors } = useSettings();
+  const loadedCitiesRef = useRef<Set<string>>(new Set());
+  const isLoadingRef = useRef(false);
 
+  // Initialize map once
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Initialize map only once
-    if (!mapInstanceRef.current) {
-      mapInstanceRef.current = L.map(mapRef.current).setView([-14.2350, -51.9253], 4); // Centered on Brazil
+    mapInstanceRef.current = L.map(mapRef.current).setView([-14.2350, -51.9253], 4);
 
-      // Use a minimal style similar to IBGE maps
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap contributors © CARTO',
-        subdomains: 'abcd',
-        maxZoom: 19
-      }).addTo(mapInstanceRef.current);
-    }
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap contributors © CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(mapInstanceRef.current);
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update cities
+  useEffect(() => {
+    if (!mapInstanceRef.current || isLoadingRef.current) return;
+
+    const currentCitiesKey = cities.map(c => `${c.properties.nome}-${c.properties.estado}`).sort().join(',');
+    const loadedCitiesKey = Array.from(loadedCitiesRef.current).sort().join(',');
+    
+    console.log('MapView - Cidades recebidas:', cities.length);
+    console.log('MapView - Primeira cidade:', cities[0]);
+    
+    if (currentCitiesKey === loadedCitiesKey) return;
+
+    isLoadingRef.current = true;
 
     // Clear existing layers
     layersRef.current.forEach(layer => {
       mapInstanceRef.current?.removeLayer(layer);
     });
     layersRef.current = [];
+    loadedCitiesRef.current.clear();
 
-    if (cities.length > 0) {
-      // Carregar geometrias reais das cidades de forma assíncrona
-      const loadCityGeometriesAndUnify = async () => {
-        try {
-          const cityFeatures: GeoJSONFeature[] = [];
-          
-          // Carregar geometrias reais ou usar fallback
-          for (const city of cities) {
-            try {
-              const realGeometry = await findMunicipalityGeometry(city.properties.nome, city.properties.estado);
-              
-              if (realGeometry) {
-                // Converter ImportedGeoJSONFeature para GeoJSONFeature local
-                const convertedFeature: GeoJSONFeature = {
-                  type: "Feature",
-                  properties: { 
-                    ...realGeometry.properties, 
-                    estado: city.properties.estado,
-                    nome: city.properties.nome,
-                    area: city.properties.area
-                  },
-                  geometry: realGeometry.geometry as GeoJSONPolygon | GeoJSONMultiPolygon
-                };
-                cityFeatures.push(convertedFeature);
-              } else {
-                // Fallback para geometria mock
-                cityFeatures.push({
-                  type: "Feature",
-                  properties: {
-                    ...city.properties,
-                    nome: city.properties.nome,
-                    area: city.properties.area,
-                    estado: city.properties.estado
-                  },
-                  geometry: city.geometry as GeoJSONPolygon | GeoJSONMultiPolygon
-                });
-              }
-            } catch (error) {
-              console.warn(`Erro ao carregar geometria para ${city.properties.nome}:`, error);
-              // Fallback para geometria mock
-              cityFeatures.push({
+    if (cities.length === 0) {
+      console.log('MapView - Nenhuma cidade para exibir');
+      isLoadingRef.current = false;
+      return;
+    }
+
+    const loadCityGeometriesAndUnify = async () => {
+      try {
+        const cityFeatures: GeoJSONFeature[] = [];
+        
+        console.log('MapView - Iniciando carregamento de geometrias para', cities.length, 'cidades');
+        
+        for (const city of cities) {
+          try {
+            console.log('MapView - Buscando geometria para:', city.properties.nome, city.properties.estado);
+            const realGeometry = await findMunicipalityGeometry(city.properties.nome, city.properties.estado);
+            
+            if (realGeometry) {
+              console.log('MapView - Geometria encontrada para:', city.properties.nome);
+              const convertedFeature: GeoJSONFeature = {
                 type: "Feature",
-                properties: {
-                  ...city.properties,
+                properties: { 
+                  ...realGeometry.properties, 
+                  estado: city.properties.estado,
                   nome: city.properties.nome,
-                  area: city.properties.area,
-                  estado: city.properties.estado
+                  area: city.properties.area
                 },
-                geometry: city.geometry as GeoJSONPolygon | GeoJSONMultiPolygon
-              });
+                geometry: realGeometry.geometry as GeoJSONPolygon | GeoJSONMultiPolygon
+              };
+              cityFeatures.push(convertedFeature);
+              loadedCitiesRef.current.add(`${city.properties.nome}-${city.properties.estado}`);
+            } else {
+              console.warn(`MapView - Geometria não encontrada para ${city.properties.nome}, ${city.properties.estado}`);
             }
+          } catch (error) {
+            console.warn(`Erro ao carregar geometria para ${city.properties.nome}:`, error);
           }
+        }
 
-          // Clear existing layers first
-          layersRef.current.forEach(layer => {
-            mapInstanceRef.current?.removeLayer(layer);
-          });
-          layersRef.current = [];
+        console.log('MapView - Total de features carregadas:', cityFeatures.length);
 
-          // Exibir cada cidade individualmente com cor por estado
-          cityFeatures.forEach((feature) => {
-            if (mapInstanceRef.current) {
-              const state = feature.properties.estado;
-              const stateColor = stateColors[state] || '#ff7800';
+        cityFeatures.forEach((feature) => {
+          if (mapInstanceRef.current) {
+            const state = feature.properties.estado;
+            const stateColor = stateColors[state] || '#ff7800';
+            
+            console.log('MapView - Adicionando camada para:', feature.properties.nome, 'cor:', stateColor);
+            
+            const layer = L.geoJSON(feature, {
+              style: {
+                color: stateColor,
+                weight: 2,
+                opacity: 0.8,
+                fillColor: stateColor,
+                fillOpacity: 0.3
+              }
+            }).on('click', () => {
+              console.log('MapView - Clique na cidade:', feature.properties.nome);
+              const cityData = getCityData(feature.properties.nome, feature.properties.estado);
+              console.log('MapView - Dados da cidade:', cityData);
+              if (cityData) {
+                setSelectedCity(cityData);
+                setIsModalOpen(true);
+              }
+            });
+            
+            layer.addTo(mapInstanceRef.current);
+            layersRef.current.push(layer);
+            console.log('MapView - Camada adicionada, total de camadas:', layersRef.current.length);
+          }
+        });
+
+        if (layersRef.current.length > 0) {
+          const group = new L.FeatureGroup(layersRef.current);
+          mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1));
+        }
+      } catch (error) {
+        console.error('Erro ao processar polígonos das cidades:', error);
+        
+        layersRef.current.forEach(layer => {
+          mapInstanceRef.current?.removeLayer(layer);
+        });
+        layersRef.current = [];
+        
+        cities.forEach(city => {
+          if (city.geometry && mapInstanceRef.current) {
+            try {
+              const geoJsonFeature = {
+                type: "Feature" as const,
+                properties: city.properties,
+                geometry: city.geometry
+              };
               
-              const layer = L.geoJSON(feature, {
+              const layer = L.geoJSON(geoJsonFeature, {
                 style: {
-                  color: stateColor,
+                  color: stateColors[city.properties.estado] || '#ff7800',
                   weight: 2,
                   opacity: 0.8,
-                  fillColor: stateColor,
+                  fillColor: stateColors[city.properties.estado] || '#ff7800',
                   fillOpacity: 0.3
                 }
               }).on('click', () => {
-                const cityData = getCityData(feature.properties.nome, feature.properties.estado);
+                const cityData = getCityData(city.properties.nome, city.properties.estado);
                 if (cityData) {
                   setSelectedCity(cityData);
                   setIsModalOpen(true);
@@ -160,69 +210,22 @@ export const MapView = ({ cities }: MapViewProps) => {
               
               layer.addTo(mapInstanceRef.current);
               layersRef.current.push(layer);
+            } catch (error) {
+              console.error('Erro ao adicionar cidade ao mapa:', error);
             }
-          });
-
-          // Fit map to show all areas
-          if (layersRef.current.length > 0) {
-            const group = new L.FeatureGroup(layersRef.current);
-            mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1));
           }
-        } catch (error) {
-          console.error('Erro ao processar polígonos das cidades:', error);
-          
-          // Clear existing layers
-          layersRef.current.forEach(layer => {
-            mapInstanceRef.current?.removeLayer(layer);
-          });
-          layersRef.current = [];
-          
-          // Fallback to individual city polygons if union fails
-          cities.forEach(city => {
-            if (city.geometry && mapInstanceRef.current) {
-              try {
-                const geoJsonFeature = {
-                  type: "Feature" as const,
-                  properties: city.properties,
-                  geometry: city.geometry
-                };
-                
-                const layer = L.geoJSON(geoJsonFeature, {
-                  style: {
-                    color: '#ff7800',
-                    weight: 2,
-                    opacity: 0.8,
-                    fillColor: '#ff7800',
-                    fillOpacity: 0.3
-                  }
-                });
-                
-                layer.addTo(mapInstanceRef.current);
-                layersRef.current.push(layer);
-              } catch (error) {
-                console.error('Erro ao adicionar cidade ao mapa:', error);
-              }
-            }
-          });
+        });
 
-          if (layersRef.current.length > 0) {
-            const group = new L.FeatureGroup(layersRef.current);
-            mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1));
-          }
+        if (layersRef.current.length > 0) {
+          const group = new L.FeatureGroup(layersRef.current);
+          mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1));
         }
-      };
-      
-      // Executar carregamento assíncrono
-      loadCityGeometriesAndUnify();
-    }
-
-    return () => {
-      // Cleanup on unmount
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+      } finally {
+        isLoadingRef.current = false;
       }
     };
+    
+    loadCityGeometriesAndUnify();
   }, [cities, stateColors]);
 
   return (

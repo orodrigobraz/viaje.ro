@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 interface StateColors {
   [stateName: string]: string;
@@ -10,6 +13,9 @@ interface SettingsContextType {
   setStateColor: (state: string, color: string) => void;
   setWishlistColor: (color: string) => void;
   resetStateColors: () => void;
+  saveSettings: () => Promise<void>;
+  isSaving: boolean;
+  hasUnsavedChanges: boolean;
 }
 
 const defaultStateColors: StateColors = {
@@ -57,30 +63,108 @@ interface SettingsProviderProps {
 }
 
 export const SettingsProvider = ({ children }: SettingsProviderProps) => {
-  const [stateColors, setStateColors] = useState<StateColors>(() => {
-    const saved = localStorage.getItem('viajero-state-colors');
-    return saved ? JSON.parse(saved) : defaultStateColors;
-  });
+  const { user } = useAuth();
+  const [stateColors, setStateColors] = useState<StateColors>(defaultStateColors);
+  const [wishlistColor, setWishlistColorState] = useState<string>('#ef4444');
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [initialStateColors, setInitialStateColors] = useState<StateColors>(defaultStateColors);
+  const [initialWishlistColor, setInitialWishlistColor] = useState<string>('#ef4444');
 
-  const [wishlistColor, setWishlistColorState] = useState<string>(() => {
-    const saved = localStorage.getItem('viajero-wishlist-color');
-    return saved || '#ef4444';
-  });
+  // Carregar configurações do banco quando o usuário faz login
+  useEffect(() => {
+    if (user) {
+      loadSettings();
+    } else {
+      // Se não houver usuário, usa as cores padrão
+      setStateColors(defaultStateColors);
+      setWishlistColorState('#ef4444');
+      setInitialStateColors(defaultStateColors);
+      setInitialWishlistColor('#ef4444');
+      setHasUnsavedChanges(false);
+    }
+  }, [user]);
+
+  const loadSettings = async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('state_colors, wishlist_color')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        const loadedStateColors = data.state_colors as StateColors || defaultStateColors;
+        const loadedWishlistColor = data.wishlist_color || '#ef4444';
+        
+        setStateColors(loadedStateColors);
+        setWishlistColorState(loadedWishlistColor);
+        setInitialStateColors(loadedStateColors);
+        setInitialWishlistColor(loadedWishlistColor);
+      } else {
+        // Se não houver configurações salvas, usa as padrões
+        setStateColors(defaultStateColors);
+        setWishlistColorState('#ef4444');
+        setInitialStateColors(defaultStateColors);
+        setInitialWishlistColor('#ef4444');
+      }
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error);
+      toast.error('Erro ao carregar suas configurações');
+    }
+  };
 
   const setStateColor = (state: string, color: string) => {
     const newColors = { ...stateColors, [state]: color };
     setStateColors(newColors);
-    localStorage.setItem('viajero-state-colors', JSON.stringify(newColors));
+    setHasUnsavedChanges(true);
   };
 
   const setWishlistColor = (color: string) => {
     setWishlistColorState(color);
-    localStorage.setItem('viajero-wishlist-color', color);
+    setHasUnsavedChanges(true);
   };
 
   const resetStateColors = () => {
     setStateColors(defaultStateColors);
-    localStorage.setItem('viajero-state-colors', JSON.stringify(defaultStateColors));
+    setHasUnsavedChanges(true);
+  };
+
+  const saveSettings = async () => {
+    if (!user) {
+      toast.error('Você precisa estar logado para salvar as configurações');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          state_colors: stateColors,
+          wishlist_color: wishlistColor,
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) throw error;
+
+      setInitialStateColors(stateColors);
+      setInitialWishlistColor(wishlistColor);
+      setHasUnsavedChanges(false);
+      toast.success('Configurações salvas com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error);
+      toast.error('Erro ao salvar as configurações');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -89,7 +173,10 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
       wishlistColor,
       setStateColor, 
       setWishlistColor,
-      resetStateColors 
+      resetStateColors,
+      saveSettings,
+      isSaving,
+      hasUnsavedChanges
     }}>
       {children}
     </SettingsContext.Provider>
