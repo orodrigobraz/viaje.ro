@@ -134,7 +134,6 @@ export const WishlistMapView = ({ cities }: WishlistMapViewProps) => {
               <h3 class="font-semibold text-lg text-purple-800">${feature.properties.nome}</h3>
               <p class="text-sm text-purple-600">${feature.properties.estado}</p>
               <p class="text-sm text-purple-600">Área: ${feature.properties.area?.toLocaleString('pt-BR') || 'N/A'} km²</p>
-              <p class="text-xs text-purple-500 mt-2 italic">💭 Destino dos sonhos</p>
             </div>
           `);
 

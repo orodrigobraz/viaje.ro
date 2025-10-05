@@ -4,8 +4,11 @@ import * as turf from '@turf/turf';
 import 'leaflet/dist/leaflet.css';
 import { findMunicipalityGeometry, GeoJSONFeature as ImportedGeoJSONFeature } from '@/utils/geoJsonLoader';
 import { CityInfoModal } from './CityInfoModal';
+import { CityActionMenu } from './CityActionMenu';
+import { CityReviewModal } from './CityReviewModal';
 import { getCityData } from '@/data/getCityData';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useCityReviews } from '@/hooks/useCityReviews';
 
 // Types for GeoJSON
 type GeoJSONPolygon = {
@@ -54,7 +57,10 @@ export const MapView = ({ cities }: MapViewProps) => {
   const layersRef = useRef<L.Layer[]>([]);
   const [selectedCity, setSelectedCity] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const { stateColors } = useSettings();
+  const { getReview, getReviewPhotos, saveReview, deleteReview, deletePhoto } = useCityReviews();
   const loadedCitiesRef = useRef<Set<string>>(new Set());
   const isLoadingRef = useRef(false);
 
@@ -161,7 +167,7 @@ export const MapView = ({ cities }: MapViewProps) => {
               console.log('MapView - Dados da cidade:', cityData);
               if (cityData) {
                 setSelectedCity(cityData);
-                setIsModalOpen(true);
+                setIsActionMenuOpen(true);
               }
             });
             
@@ -204,7 +210,7 @@ export const MapView = ({ cities }: MapViewProps) => {
                 const cityData = getCityData(city.properties.nome, city.properties.estado);
                 if (cityData) {
                   setSelectedCity(cityData);
-                  setIsModalOpen(true);
+                  setIsActionMenuOpen(true);
                 }
               });
               
@@ -228,14 +234,55 @@ export const MapView = ({ cities }: MapViewProps) => {
     loadCityGeometriesAndUnify();
   }, [cities, stateColors]);
 
+  const handleSaveReview = async (rating: number, comment: string, photoFiles: File[]) => {
+    if (!selectedCity) return false;
+    return await saveReview(selectedCity.nome, selectedCity.estado, rating, comment, photoFiles);
+  };
+
+  const handleDeleteReview = async () => {
+    if (!selectedCity) return false;
+    return await deleteReview(selectedCity.nome, selectedCity.estado);
+  };
+
+  const currentReview = selectedCity ? getReview(selectedCity.nome, selectedCity.estado) : undefined;
+  const currentPhotos = currentReview ? getReviewPhotos(currentReview.id) : [];
+
   return (
     <div className="w-full h-full">
       <div ref={mapRef} className="w-full h-full rounded-lg shadow-sm border border-border" />
-      <CityInfoModal
-        city={selectedCity}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      
+      {selectedCity && (
+        <>
+          <CityActionMenu
+            isOpen={isActionMenuOpen}
+            onClose={() => setIsActionMenuOpen(false)}
+            cityName={selectedCity.nome}
+            stateName={selectedCity.estado}
+            hasReview={!!currentReview}
+            onViewInfo={() => setIsModalOpen(true)}
+            onViewReview={() => setIsReviewModalOpen(true)}
+            onAddReview={() => setIsReviewModalOpen(true)}
+          />
+
+          <CityInfoModal
+            city={selectedCity}
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+          />
+
+          <CityReviewModal
+            isOpen={isReviewModalOpen}
+            onClose={() => setIsReviewModalOpen(false)}
+            cityName={selectedCity.nome}
+            stateName={selectedCity.estado}
+            existingReview={currentReview}
+            existingPhotos={currentPhotos}
+            onSave={handleSaveReview}
+            onDelete={currentReview ? handleDeleteReview : undefined}
+            onDeletePhoto={deletePhoto}
+          />
+        </>
+      )}
     </div>
   );
 };

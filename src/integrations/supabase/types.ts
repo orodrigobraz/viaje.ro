@@ -14,6 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
+      city_review_photos: {
+        Row: {
+          created_at: string
+          id: string
+          photo_url: string
+          review_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          photo_url: string
+          review_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          photo_url?: string
+          review_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "city_review_photos_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "city_reviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      city_reviews: {
+        Row: {
+          city_name: string
+          comment: string | null
+          created_at: string
+          id: string
+          rating: number
+          state_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city_name: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: number
+          state_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city_name?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: number
+          state_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       municipios: {
         Row: {
           area_km2: number | null

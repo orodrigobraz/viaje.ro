@@ -85,6 +85,17 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
     }
   }, [user]);
 
+  // Salvar automaticamente quando houver mudanças
+  useEffect(() => {
+    if (hasUnsavedChanges && user) {
+      const timeoutId = setTimeout(() => {
+        saveSettings();
+      }, 1000); // Aguarda 1 segundo após a última mudança
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [hasUnsavedChanges, stateColors, wishlistColor, user]);
+
   const loadSettings = async () => {
     if (!user) return;
 
