@@ -596,6 +596,10 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
     
     const allData = [...positiveChanges, ...negativeChanges].sort((a, b) => b.changePercent - a.changePercent);
 
+    // Calcular o máximo absoluto para centralizar o eixo em zero
+    const maxAbsValue = Math.max(...allData.map(d => Math.abs(d.changePercent)));
+    const axisMax = Math.ceil(maxAbsValue * 1.1);
+
     return {
       title: {
         text: 'Variação Populacional (2022-2024)',
@@ -606,13 +610,13 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
         trigger: 'axis',
         formatter: (params: any) => {
           const data = params[0];
-          const change = data.value > 0 ? 'aumento' : 'diminuição';
+          const change = data.value > 0 ? 'crescimento' : 'redução';
           const population2022 = data.data.populacao_estimada_censo_2022;
           const population2024 = data.data.populacao_estimada_censo_2024;
           return `${data.name} - ${data.data.estado}<br/>
                   População 2022: ${population2022.toLocaleString('pt-BR')} hab<br/>
                   População 2024: ${population2024.toLocaleString('pt-BR')} hab<br/>
-                  Variação: ${Math.abs(data.value).toFixed(2)}% (${change})`;
+                  Variação: ${data.value > 0 ? '+' : ''}${data.value.toFixed(2)}% (${change})`;
         }
       },
       grid: {
@@ -624,17 +628,26 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
       },
       xAxis: {
         type: 'value',
+        min: -axisMax,
+        max: axisMax,
         axisLabel: {
           formatter: (value: number) => `${value.toFixed(1)}%`
         },
         axisLine: {
-          show: true
+          show: true,
+          lineStyle: {
+            color: '#999'
+          }
         },
         splitLine: {
           show: true,
           lineStyle: {
-            color: '#e0e0e0'
+            color: '#e0e0e0',
+            type: 'dashed'
           }
+        },
+        axisTick: {
+          show: true
         }
       },
       yAxis: {
@@ -664,7 +677,14 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
             opacity: 0.8
           }
         },
-        barWidth: '60%'
+        barWidth: '60%',
+        label: {
+          show: true,
+          position: (params: any) => params.value > 0 ? 'right' : 'left',
+          formatter: (params: any) => `${params.value > 0 ? '+' : ''}${params.value.toFixed(1)}%`,
+          fontSize: 10,
+          color: '#666'
+        }
       }]
     };
   };
@@ -1052,31 +1072,35 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
                        <div>
                          <h5 className="font-medium mb-3 text-muted-foreground">Por Variação Populacional (2022-2024)</h5>
                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-                           <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                           <div className={`p-3 sm:p-4 ${maxPopulationChange > 0 ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'} rounded-lg border`}>
                              <div className="flex items-center gap-2 mb-2">
-                               <TrendingUp className="h-4 w-4 text-green-600" />
-                               <h4 className="font-semibold text-green-700 dark:text-green-400">Maior Crescimento</h4>
+                               <TrendingUp className={`h-4 w-4 ${maxPopulationChange > 0 ? 'text-green-600' : 'text-red-600'}`} />
+                               <h4 className={`font-semibold ${maxPopulationChange > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                                 {maxPopulationChange > 0 ? 'Maior Crescimento' : 'Menor Redução'}
+                               </h4>
                              </div>
                              {highestPopulationChangeCities.map((city, index) => (
                                <div key={index} className={index > 0 ? 'mt-2' : ''}>
-                                 <p className="text-base sm:text-lg font-bold text-green-800 dark:text-green-300 truncate">{city.nome}</p>
-                                 <p className="text-sm text-green-600 dark:text-green-400">
-                                   {city.estado} • +{city.changePercent.toFixed(2)}%
+                                 <p className={`text-base sm:text-lg font-bold truncate ${maxPopulationChange > 0 ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>{city.nome}</p>
+                                 <p className={`text-sm ${maxPopulationChange > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                   {city.estado} • {city.changePercent > 0 ? '+' : ''}{city.changePercent.toFixed(2)}%
                                  </p>
                                </div>
                              ))}
                            </div>
                            
-                           <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                           <div className={`p-3 sm:p-4 ${minPopulationChange < 0 ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'} rounded-lg border`}>
                              <div className="flex items-center gap-2 mb-2">
-                               <TrendingDown className="h-4 w-4 text-red-600" />
-                               <h4 className="font-semibold text-red-700 dark:text-red-400">Maior Redução</h4>
+                               <TrendingDown className={`h-4 w-4 ${minPopulationChange < 0 ? 'text-red-600' : 'text-green-600'}`} />
+                               <h4 className={`font-semibold ${minPopulationChange < 0 ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>
+                                 {minPopulationChange < 0 ? 'Maior Redução' : 'Menor Crescimento'}
+                               </h4>
                              </div>
                              {lowestPopulationChangeCities.map((city, index) => (
                                <div key={index} className={index > 0 ? 'mt-2' : ''}>
-                                 <p className="text-base sm:text-lg font-bold text-red-800 dark:text-red-300 truncate">{city.nome}</p>
-                                 <p className="text-sm text-red-600 dark:text-red-400">
-                                   {city.estado} • {city.changePercent.toFixed(2)}%
+                                 <p className={`text-base sm:text-lg font-bold truncate ${minPopulationChange < 0 ? 'text-red-800 dark:text-red-300' : 'text-green-800 dark:text-green-300'}`}>{city.nome}</p>
+                                 <p className={`text-sm ${minPopulationChange < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                   {city.estado} • {city.changePercent > 0 ? '+' : ''}{city.changePercent.toFixed(2)}%
                                  </p>
                                </div>
                              ))}

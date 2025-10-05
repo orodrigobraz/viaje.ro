@@ -207,7 +207,7 @@ export const SettingsModal = () => {
             className="flex items-center gap-2"
           >
             <Save className="h-4 w-4" />
-            {isSaving ? 'Salvando...' : 'Salvar Configurações'}
+            {isSaving ? 'Salvando...' : 'Salvar'}
           </Button>
         </DialogFooter>
       </DialogContent>
