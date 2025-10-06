@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, X, Upload, Trash2 } from 'lucide-react';
+import { Star, X, Camera, Trash2 } from 'lucide-react';
 import { CityReview, CityReviewPhoto } from '@/hooks/useCityReviews';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -146,138 +146,152 @@ export const CityReviewModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>
-            {existingReview ? 'Editar Avaliação' : 'Adicionar Avaliação'}
+      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+          <DialogTitle className="text-2xl">
+            {existingReview ? 'Editar Avaliação' : 'Nova Avaliação'}
           </DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            {cityName}, {stateName}
-          </p>
+          <DialogDescription className="text-base">
+            {cityName} • {stateName}
+          </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
-          <div className="space-y-6">
-            {/* Star Rating */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Avaliação</label>
-              <div className="flex gap-1 justify-center py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+          {/* Star Rating */}
+          <div className="space-y-3">
+            <label className="text-sm font-semibold">Sua avaliação</label>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1">
                 {renderStars()}
               </div>
-              <p className="text-center text-sm text-muted-foreground">
-                {rating > 0 ? `${rating} estrela${rating !== 1 ? 's' : ''}` : 'Selecione uma avaliação'}
-              </p>
-            </div>
-
-            {/* Comment */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Comentário</label>
-              <Textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Compartilhe sua experiência sobre esta cidade..."
-                rows={4}
-                className="resize-none"
-              />
-            </div>
-
-            {/* Photos */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Fotos ({existingPhotos.length + photoFiles.length}/10)
-              </label>
-              
-              {/* Existing Photos */}
-              {existingPhotos.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {existingPhotos.map((photo) => (
-                    <div key={photo.id} className="relative group aspect-square">
-                      <img
-                        src={photo.photo_url}
-                        alt="Review photo"
-                        className="w-full h-full object-cover rounded-md"
-                      />
-                      {onDeletePhoto && (
-                        <Button
-                          size="icon"
-                          variant="destructive"
-                          className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => onDeletePhoto(photo.id, photo.photo_url)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* New Photos Preview */}
-              {photoPreviewUrls.length > 0 && (
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {photoPreviewUrls.map((url, index) => (
-                    <div key={index} className="relative group aspect-square">
-                      <img
-                        src={url}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-full object-cover rounded-md"
-                      />
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleRemoveNewPhoto(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Upload Button */}
-              {existingPhotos.length + photoFiles.length < 10 && (
-                <div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                    id="photo-upload"
-                  />
-                  <label htmlFor="photo-upload">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => document.getElementById('photo-upload')?.click()}
-                    >
-                      <Upload className="mr-2 h-4 w-4" />
-                      Adicionar Fotos
-                    </Button>
-                  </label>
-                </div>
+              {rating > 0 && (
+                <span className="text-lg font-semibold text-primary">
+                  {rating.toFixed(1)}
+                </span>
               )}
             </div>
           </div>
-        </ScrollArea>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+          {/* Comment */}
+          <div className="space-y-3">
+            <label className="text-sm font-semibold">Seu comentário</label>
+            <Textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Conte-nos sobre sua experiência nesta cidade... O que você mais gostou? Quais lugares visitou?"
+              className="min-h-[120px] resize-none"
+            />
+          </div>
+
+          {/* Photos */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold">
+                Fotos da viagem
+              </label>
+              <span className="text-xs text-muted-foreground">
+                {existingPhotos.length + photoFiles.length}/10
+              </span>
+            </div>
+            
+            {(existingPhotos.length > 0 || photoPreviewUrls.length > 0) && (
+              <div className="grid grid-cols-4 gap-3">
+                {existingPhotos.map((photo) => (
+                  <div key={photo.id} className="relative aspect-square group">
+                    <img
+                      src={photo.photo_url}
+                      alt="Foto da cidade"
+                      className="w-full h-full object-cover rounded-lg border-2 border-border"
+                    />
+                    {onDeletePhoto && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                        onClick={() => onDeletePhoto(photo.id, photo.photo_url)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                
+                {photoPreviewUrls.map((url, index) => (
+                  <div key={index} className="relative aspect-square group">
+                    <img
+                      src={url}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover rounded-lg border-2 border-primary"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                      onClick={() => handleRemoveNewPhoto(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {existingPhotos.length + photoFiles.length < 10 && (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                  id="photo-upload"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('photo-upload')?.click()}
+                  className="w-full h-12 border-dashed border-2 hover:border-primary hover:bg-primary/5"
+                >
+                  <Camera className="h-5 w-5 mr-2" />
+                  Adicionar Fotos
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="px-6 py-4 border-t bg-muted/20 flex-row gap-2">
           {existingReview && onDelete && (
             <Button
+              type="button"
               variant="destructive"
               onClick={handleDelete}
-              className="sm:mr-auto"
+              disabled={saving}
+              className="mr-auto"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="h-4 w-4 mr-2" />
               Excluir
             </Button>
           )}
-          <Button variant="outline" onClick={onClose}>
+          
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={saving}
+            className="min-w-24"
+          >
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          
+          <Button
+            type="submit"
+            onClick={handleSave}
+            disabled={saving || rating === 0}
+            className="min-w-24"
+          >
             {saving ? 'Salvando...' : 'Salvar'}
           </Button>
         </DialogFooter>

@@ -4,7 +4,6 @@ import * as turf from '@turf/turf';
 import 'leaflet/dist/leaflet.css';
 import { findMunicipalityGeometry, GeoJSONFeature as ImportedGeoJSONFeature } from '@/utils/geoJsonLoader';
 import { CityInfoModal } from './CityInfoModal';
-import { CityActionMenu } from './CityActionMenu';
 import { CityReviewModal } from './CityReviewModal';
 import { getCityData } from '@/data/getCityData';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -57,7 +56,6 @@ export const MapView = ({ cities }: MapViewProps) => {
   const layersRef = useRef<L.Layer[]>([]);
   const [selectedCity, setSelectedCity] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const { stateColors } = useSettings();
   const { getReview, getReviewPhotos, saveReview, deleteReview, deletePhoto } = useCityReviews();
@@ -153,6 +151,28 @@ export const MapView = ({ cities }: MapViewProps) => {
             
             console.log('MapView - Adicionando camada para:', feature.properties.nome, 'cor:', stateColor);
             
+            const cityData = getCityData(feature.properties.nome, feature.properties.estado);
+            const review = cityData ? getReview(cityData.nome, cityData.estado) : undefined;
+            
+            const popupContent = document.createElement('div');
+            popupContent.className = 'p-3 min-w-[200px]';
+            popupContent.innerHTML = `
+              <div class="space-y-3">
+                <div class="text-center border-b pb-2">
+                  <h3 class="font-semibold text-base">${feature.properties.nome}</h3>
+                  <p class="text-xs text-muted-foreground">${feature.properties.estado}</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <button id="btn-info-${feature.properties.nome.replace(/\s/g, '-')}" class="w-full px-3 py-2 text-sm bg-secondary hover:bg-secondary/80 rounded-md transition-colors flex items-center justify-center gap-2">
+                    <span>Ver Informações</span>
+                  </button>
+                  <button id="btn-review-${feature.properties.nome.replace(/\s/g, '-')}" class="w-full px-3 py-2 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded-md transition-colors flex items-center justify-center gap-2">
+                    <span>${review ? 'Ver Avaliação' : 'Adicionar Avaliação'}</span>
+                  </button>
+                </div>
+              </div>
+            `;
+            
             const layer = L.geoJSON(feature, {
               style: {
                 color: stateColor,
@@ -161,13 +181,27 @@ export const MapView = ({ cities }: MapViewProps) => {
                 fillColor: stateColor,
                 fillOpacity: 0.3
               }
-            }).on('click', () => {
-              console.log('MapView - Clique na cidade:', feature.properties.nome);
-              const cityData = getCityData(feature.properties.nome, feature.properties.estado);
-              console.log('MapView - Dados da cidade:', cityData);
-              if (cityData) {
-                setSelectedCity(cityData);
-                setIsActionMenuOpen(true);
+            }).bindPopup(popupContent, {
+              maxWidth: 250,
+              className: 'custom-popup'
+            }).on('popupopen', () => {
+              const btnInfo = document.getElementById(`btn-info-${feature.properties.nome.replace(/\s/g, '-')}`);
+              const btnReview = document.getElementById(`btn-review-${feature.properties.nome.replace(/\s/g, '-')}`);
+              
+              if (btnInfo && cityData) {
+                btnInfo.onclick = () => {
+                  setSelectedCity(cityData);
+                  setIsModalOpen(true);
+                  mapInstanceRef.current?.closePopup();
+                };
+              }
+              
+              if (btnReview && cityData) {
+                btnReview.onclick = () => {
+                  setSelectedCity(cityData);
+                  setIsReviewModalOpen(true);
+                  mapInstanceRef.current?.closePopup();
+                };
               }
             });
             
@@ -198,6 +232,30 @@ export const MapView = ({ cities }: MapViewProps) => {
                 geometry: city.geometry
               };
               
+              const cityData = getCityData(city.properties.nome, city.properties.estado);
+              const review = cityData ? getReview(cityData.nome, cityData.estado) : undefined;
+              
+              const popupContent = document.createElement('div');
+              popupContent.className = 'p-3 min-w-[200px]';
+              popupContent.innerHTML = `
+                <div class="space-y-3">
+                  <div class="text-center border-b pb-2">
+                    <h3 class="font-semibold text-base">${city.properties.nome}</h3>
+                    <p class="text-xs text-muted-foreground">${city.properties.estado}</p>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <button id="btn-info-fallback-${city.properties.nome.replace(/\s/g, '-')}" class="w-full px-3 py-2 text-sm bg-secondary hover:bg-secondary/80 rounded-md transition-colors flex items-center justify-center gap-2">
+                      <span>ℹ️</span>
+                      <span>Ver Informações</span>
+                    </button>
+                    <button id="btn-review-fallback-${city.properties.nome.replace(/\s/g, '-')}" class="w-full px-3 py-2 text-sm bg-primary text-primary-foreground hover:bg-primary/90 rounded-md transition-colors flex items-center justify-center gap-2">
+                      <span>⭐</span>
+                      <span>${review ? 'Ver Avaliação' : 'Adicionar Avaliação'}</span>
+                    </button>
+                  </div>
+                </div>
+              `;
+              
               const layer = L.geoJSON(geoJsonFeature, {
                 style: {
                   color: stateColors[city.properties.estado] || '#ff7800',
@@ -206,11 +264,27 @@ export const MapView = ({ cities }: MapViewProps) => {
                   fillColor: stateColors[city.properties.estado] || '#ff7800',
                   fillOpacity: 0.3
                 }
-              }).on('click', () => {
-                const cityData = getCityData(city.properties.nome, city.properties.estado);
-                if (cityData) {
-                  setSelectedCity(cityData);
-                  setIsActionMenuOpen(true);
+              }).bindPopup(popupContent, {
+                maxWidth: 250,
+                className: 'custom-popup'
+              }).on('popupopen', () => {
+                const btnInfo = document.getElementById(`btn-info-fallback-${city.properties.nome.replace(/\s/g, '-')}`);
+                const btnReview = document.getElementById(`btn-review-fallback-${city.properties.nome.replace(/\s/g, '-')}`);
+                
+                if (btnInfo && cityData) {
+                  btnInfo.onclick = () => {
+                    setSelectedCity(cityData);
+                    setIsModalOpen(true);
+                    mapInstanceRef.current?.closePopup();
+                  };
+                }
+                
+                if (btnReview && cityData) {
+                  btnReview.onclick = () => {
+                    setSelectedCity(cityData);
+                    setIsReviewModalOpen(true);
+                    mapInstanceRef.current?.closePopup();
+                  };
                 }
               });
               
@@ -248,22 +322,11 @@ export const MapView = ({ cities }: MapViewProps) => {
   const currentPhotos = currentReview ? getReviewPhotos(currentReview.id) : [];
 
   return (
-    <div className="w-full h-full">
-      <div ref={mapRef} className="w-full h-full rounded-lg shadow-sm border border-border" />
+    <div className="w-full h-full relative">
+      <div ref={mapRef} className="absolute inset-0 w-full h-full" />
       
       {selectedCity && (
         <>
-          <CityActionMenu
-            isOpen={isActionMenuOpen}
-            onClose={() => setIsActionMenuOpen(false)}
-            cityName={selectedCity.nome}
-            stateName={selectedCity.estado}
-            hasReview={!!currentReview}
-            onViewInfo={() => setIsModalOpen(true)}
-            onViewReview={() => setIsReviewModalOpen(true)}
-            onAddReview={() => setIsReviewModalOpen(true)}
-          />
-
           <CityInfoModal
             city={selectedCity}
             isOpen={isModalOpen}
