@@ -701,7 +701,7 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto z-[9999] bg-background border border-border">
-        <DialogHeader className="bg-background border-b border-border pb-4 sticky top-0 z-10">
+        <DialogHeader className="bg-background border-b border-border pb-4">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <BarChart3 className="h-5 w-5 text-primary" />
             <span className="truncate">Estatísticas Detalhadas - Viaje.ro</span>

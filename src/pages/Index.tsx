@@ -134,34 +134,32 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background flex flex-col">
       <Header />
       
-      <main className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-4 gap-6 h-[calc(100vh-8rem)]">
-          {/* Coluna esquerda - Controles */}
-          <div className="lg:col-span-1 space-y-6 overflow-y-auto">
-            <StateSelector 
-              selectedState={selectedState} 
-              onStateSelect={handleStateSelect} 
-            />
-            <CitySelector 
-              selectedState={selectedState} 
-              onAddCity={handleAddCity}
-              onAddToWishlist={handleAddToWishlist}
-            />
-            <CityList cities={visitedCities} onRemoveCity={handleRemoveCity} />
-            <StatisticsModal cities={visitedCities} />
-            <WishlistModal 
-              cities={wishlistCities} 
-              onRemoveCity={handleRemoveFromWishlist}
-            />
-          </div>
-          
-          {/* Coluna direita - Mapa */}
-          <div className="lg:col-span-3 min-h-[500px] lg:h-full">
-            <MapView cities={visitedCities} />
-          </div>
+      <main className="flex-1 flex overflow-hidden">
+        {/* Coluna esquerda - Controles */}
+        <div className="w-80 flex-shrink-0 border-r border-border bg-background overflow-y-auto p-4 space-y-4">
+          <StateSelector 
+            selectedState={selectedState} 
+            onStateSelect={handleStateSelect} 
+          />
+          <CitySelector 
+            selectedState={selectedState} 
+            onAddCity={handleAddCity}
+            onAddToWishlist={handleAddToWishlist}
+          />
+          <CityList cities={visitedCities} onRemoveCity={handleRemoveCity} />
+          <StatisticsModal cities={visitedCities} />
+          <WishlistModal 
+            cities={wishlistCities} 
+            onRemoveCity={handleRemoveFromWishlist}
+          />
+        </div>
+        
+        {/* Coluna direita - Mapa */}
+        <div className="flex-1 relative">
+          <MapView cities={visitedCities} />
         </div>
       </main>
     </div>
