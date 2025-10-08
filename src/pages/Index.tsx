@@ -9,7 +9,7 @@ import { StatisticsModal } from '@/components/StatisticsModal';
 import { WishlistModal } from '@/components/WishlistModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { LogIn } from 'lucide-react';
+import { LogIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCities } from '@/hooks/useCities';
 import { searchCity } from '@/data/mockData';
@@ -28,6 +28,7 @@ const Index = () => {
   } = useCities();
   
   const [selectedState, setSelectedState] = useState<string>('');
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const navigate = useNavigate();
 
   const handleAddCity = async (cityName: string) => {
@@ -139,22 +140,31 @@ const Index = () => {
       
       <main className="flex-1 flex overflow-hidden">
         {/* Coluna esquerda - Controles */}
-        <div className="w-80 flex-shrink-0 border-r border-border bg-background overflow-y-auto p-4 space-y-4">
-          <StateSelector 
-            selectedState={selectedState} 
-            onStateSelect={handleStateSelect} 
-          />
-          <CitySelector 
-            selectedState={selectedState} 
-            onAddCity={handleAddCity}
-            onAddToWishlist={handleAddToWishlist}
-          />
-          <CityList cities={visitedCities} onRemoveCity={handleRemoveCity} />
-          <StatisticsModal cities={visitedCities} />
-          <WishlistModal 
-            cities={wishlistCities} 
-            onRemoveCity={handleRemoveFromWishlist}
-          />
+        <div 
+          className={`flex-shrink-0 border-r border-border bg-background overflow-y-auto p-4 space-y-4 transition-all duration-300 ease-in-out ${
+            sidebarOpen ? 'w-80' : 'w-0 p-0 border-r-0'
+          }`}
+          style={{ opacity: sidebarOpen ? 1 : 0 }}
+        >
+          {sidebarOpen && (
+            <>
+              <StateSelector 
+                selectedState={selectedState} 
+                onStateSelect={handleStateSelect} 
+              />
+              <CitySelector 
+                selectedState={selectedState} 
+                onAddCity={handleAddCity}
+                onAddToWishlist={handleAddToWishlist}
+              />
+              <CityList cities={visitedCities} onRemoveCity={handleRemoveCity} />
+              <StatisticsModal cities={visitedCities} />
+              <WishlistModal 
+                cities={wishlistCities} 
+                onRemoveCity={handleRemoveFromWishlist}
+              />
+            </>
+          )}
         </div>
         
         {/* Coluna direita - Mapa */}
@@ -162,6 +172,23 @@ const Index = () => {
           <MapView cities={visitedCities} />
         </div>
       </main>
+      
+      {/* Botão para toggle do sidebar - Fixed position */}
+      <Button
+        variant="default"
+        size="icon"
+        className="fixed top-1/2 -translate-y-1/2 z-[9999] transition-all duration-300 ease-in-out shadow-xl hover:shadow-2xl hover:scale-105 flex items-center justify-center rounded-full border-2 border-primary/20 w-14 h-14 p-0"
+        style={{ 
+          left: sidebarOpen ? '21rem' : '1rem'
+        }}
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+      >
+        {sidebarOpen ? (
+          <ChevronLeft className="h-6 w-6" />
+        ) : (
+          <ChevronRight className="h-6 w-6" />
+        )}
+      </Button>
     </div>
   );
 };
