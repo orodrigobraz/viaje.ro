@@ -138,16 +138,20 @@ const Index = () => {
     <div className="h-screen bg-background flex flex-col">
       <Header />
       
-      <main className="flex-1 flex overflow-hidden">
-        {/* Coluna esquerda - Controles */}
+      <main className="flex-1 relative overflow-hidden">
+        {/* Mapa - Ocupa toda a tela */}
+        <div className="absolute inset-0 z-0">
+          <MapView cities={visitedCities} />
+        </div>
+        
+        {/* Sidebar flutuante - Por cima do mapa */}
         <div 
-          className={`flex-shrink-0 border-r border-border bg-background overflow-y-auto p-4 space-y-4 transition-all duration-300 ease-in-out ${
-            sidebarOpen ? 'w-80' : 'w-0 p-0 border-r-0'
+          className={`absolute top-0 left-0 h-full border-r border-border bg-background shadow-2xl overflow-y-auto transition-all duration-300 ease-in-out z-50 ${
+            sidebarOpen ? 'w-80 p-4' : 'w-0 p-0 border-r-0'
           }`}
-          style={{ opacity: sidebarOpen ? 1 : 0 }}
         >
           {sidebarOpen && (
-            <>
+            <div className="space-y-4">
               <StateSelector 
                 selectedState={selectedState} 
                 onStateSelect={handleStateSelect} 
@@ -163,13 +167,8 @@ const Index = () => {
                 cities={wishlistCities} 
                 onRemoveCity={handleRemoveFromWishlist}
               />
-            </>
+            </div>
           )}
-        </div>
-        
-        {/* Coluna direita - Mapa */}
-        <div className="flex-1 relative">
-          <MapView cities={visitedCities} />
         </div>
       </main>
       

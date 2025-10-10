@@ -58,7 +58,7 @@ export const MapView = ({ cities }: MapViewProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const { stateColors } = useSettings();
-  const { getReview, getReviewPhotos, saveReview, deleteReview, deletePhoto } = useCityReviews();
+  const { getReview, getReviewPhotos, saveReview, deleteReview, deletePhoto, setCoverPhoto, updateCoverPosition } = useCityReviews();
   const loadedCitiesRef = useRef<Set<string>>(new Set());
   const isLoadingRef = useRef(false);
 
@@ -213,7 +213,7 @@ export const MapView = ({ cities }: MapViewProps) => {
 
         if (layersRef.current.length > 0) {
           const group = new L.FeatureGroup(layersRef.current);
-          mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1));
+          mapInstanceRef.current?.fitBounds(group.getBounds().pad(0.1));
         }
       } catch (error) {
         console.error('Erro ao processar polígonos das cidades:', error);
@@ -298,7 +298,7 @@ export const MapView = ({ cities }: MapViewProps) => {
 
         if (layersRef.current.length > 0) {
           const group = new L.FeatureGroup(layersRef.current);
-          mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1));
+          mapInstanceRef.current?.fitBounds(group.getBounds().pad(0.1));
         }
       } finally {
         isLoadingRef.current = false;
@@ -308,9 +308,30 @@ export const MapView = ({ cities }: MapViewProps) => {
     loadCityGeometriesAndUnify();
   }, [cities, stateColors]);
 
-  const handleSaveReview = async (rating: number, comment: string, photoFiles: File[]) => {
+  const handleSaveReview = async (
+    rating: number, 
+    comment: string, 
+    photoFiles: File[], 
+    coverPhotoIndex: number | null,
+    coverPosition: { x: number; y: number; scale: number }
+  ) => {
     if (!selectedCity) return false;
-    return await saveReview(selectedCity.nome, selectedCity.estado, rating, comment, photoFiles);
+    const success = await saveReview(
+      selectedCity.nome, 
+      selectedCity.estado, 
+      rating, 
+      comment, 
+      photoFiles, 
+      coverPhotoIndex,
+      coverPosition
+    );
+    
+    // Update cover position if review was saved successfully
+    if (success && currentReview) {
+      await updateCoverPosition(selectedCity.nome, selectedCity.estado, coverPosition);
+    }
+    
+    return success;
   };
 
   const handleDeleteReview = async () => {
@@ -322,7 +343,7 @@ export const MapView = ({ cities }: MapViewProps) => {
   const currentPhotos = currentReview ? getReviewPhotos(currentReview.id) : [];
 
   return (
-    <div className="w-full h-full relative">
+    <div className="absolute inset-0 w-full h-full">
       <div ref={mapRef} className="absolute inset-0 w-full h-full" />
       
       {selectedCity && (
@@ -343,6 +364,7 @@ export const MapView = ({ cities }: MapViewProps) => {
             onSave={handleSaveReview}
             onDelete={currentReview ? handleDeleteReview : undefined}
             onDeletePhoto={deletePhoto}
+            onSetCoverPhoto={setCoverPhoto}
           />
         </>
       )}
