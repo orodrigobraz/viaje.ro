@@ -12,6 +12,9 @@ export interface CityReview {
   comment: string | null;
   created_at: string;
   updated_at: string;
+  cover_photo_position_x: number;
+  cover_photo_position_y: number;
+  cover_photo_scale: number;
 }
 
 export interface CityReviewPhoto {
@@ -19,6 +22,7 @@ export interface CityReviewPhoto {
   review_id: string;
   photo_url: string;
   created_at: string;
+  is_cover: boolean;
 }
 
 export const useCityReviews = () => {
@@ -93,7 +97,9 @@ export const useCityReviews = () => {
     stateName: string,
     rating: number,
     comment: string,
-    photoFiles: File[]
+    photoFiles: File[],
+    coverPhotoIndex: number | null = null,
+    coverPosition: { x: number; y: number; scale: number } = { x: 0.5, y: 0.5, scale: 1.0 }
   ): Promise<boolean> => {
     if (!user) return false;
 
@@ -107,6 +113,9 @@ export const useCityReviews = () => {
           state_name: stateName,
           rating,
           comment: comment || null,
+          cover_photo_position_x: coverPosition.x,
+          cover_photo_position_y: coverPosition.y,
+          cover_photo_scale: coverPosition.scale,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id,city_name,state_name',
@@ -118,9 +127,10 @@ export const useCityReviews = () => {
 
       // Upload photos
       if (photoFiles.length > 0) {
-        for (const file of photoFiles) {
+        for (let i = 0; i < photoFiles.length; i++) {
+          const file = photoFiles[i];
           const fileExt = file.name.split('.').pop();
-          const fileName = `${user.id}/${reviewData.id}/${Date.now()}.${fileExt}`;
+          const fileName = `${user.id}/${reviewData.id}/${Date.now()}_${i}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from('city-review-photos')
@@ -137,6 +147,7 @@ export const useCityReviews = () => {
             .insert({
               review_id: reviewData.id,
               photo_url: publicUrl,
+              is_cover: coverPhotoIndex === i,
             });
 
           if (photoError) throw photoError;
@@ -233,6 +244,76 @@ export const useCityReviews = () => {
     }
   };
 
+  const setCoverPhoto = async (photoId: string, reviewId: string): Promise<boolean> => {
+    try {
+      // Remove cover from all photos of this review
+      const { error: removeError } = await supabase
+        .from('city_review_photos')
+        .update({ is_cover: false })
+        .eq('review_id', reviewId);
+
+      if (removeError) throw removeError;
+
+      // Set new cover photo
+      const { error: setCoverError } = await supabase
+        .from('city_review_photos')
+        .update({ is_cover: true })
+        .eq('id', photoId);
+
+      if (setCoverError) throw setCoverError;
+
+      await loadReviews();
+      toast({
+        title: 'Sucesso',
+        description: 'Foto de capa atualizada!',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error setting cover photo:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível definir a foto de capa.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const updateCoverPosition = async (
+    cityName: string,
+    stateName: string,
+    position: { x: number; y: number; scale: number }
+  ): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase
+        .from('city_reviews')
+        .update({
+          cover_photo_position_x: position.x,
+          cover_photo_position_y: position.y,
+          cover_photo_scale: position.scale,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id)
+        .eq('city_name', cityName)
+        .eq('state_name', stateName);
+
+      if (error) throw error;
+
+      await loadReviews();
+      return true;
+    } catch (error) {
+      console.error('Error updating cover position:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível atualizar a posição da foto.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   return {
     reviews,
     photos,
@@ -242,6 +323,8 @@ export const useCityReviews = () => {
     saveReview,
     deleteReview,
     deletePhoto,
+    setCoverPhoto,
+    updateCoverPosition,
     loadReviews,
   };
 };

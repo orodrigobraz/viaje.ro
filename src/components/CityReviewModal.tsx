@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, X, Camera, Trash2 } from 'lucide-react';
+import { Star, X, Camera, Trash2, Image as ImageIcon } from 'lucide-react';
 import { CityReview, CityReviewPhoto } from '@/hooks/useCityReviews';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CoverPhotoAdjuster } from './CoverPhotoAdjuster';
+import { Badge } from '@/components/ui/badge';
 
 interface CityReviewModalProps {
   isOpen: boolean;
@@ -13,9 +15,10 @@ interface CityReviewModalProps {
   stateName: string;
   existingReview?: CityReview;
   existingPhotos?: CityReviewPhoto[];
-  onSave: (rating: number, comment: string, photoFiles: File[]) => Promise<boolean>;
+  onSave: (rating: number, comment: string, photoFiles: File[], coverPhotoIndex: number | null, coverPosition: { x: number; y: number; scale: number }) => Promise<boolean>;
   onDelete?: () => Promise<boolean>;
   onDeletePhoto?: (photoId: string, photoUrl: string) => Promise<boolean>;
+  onSetCoverPhoto?: (photoId: string, reviewId: string) => Promise<boolean>;
 }
 
 export const CityReviewModal = ({
@@ -28,6 +31,7 @@ export const CityReviewModal = ({
   onSave,
   onDelete,
   onDeletePhoto,
+  onSetCoverPhoto,
 }: CityReviewModalProps) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -35,17 +39,26 @@ export const CityReviewModal = ({
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [coverPhotoIndex, setCoverPhotoIndex] = useState<number | null>(null);
+  const [coverPosition, setCoverPosition] = useState({ x: 0.5, y: 0.5, scale: 1.0 });
 
   useEffect(() => {
     if (existingReview) {
       setRating(existingReview.rating);
       setComment(existingReview.comment || '');
+      setCoverPosition({
+        x: existingReview.cover_photo_position_x,
+        y: existingReview.cover_photo_position_y,
+        scale: existingReview.cover_photo_scale,
+      });
     } else {
       setRating(0);
       setComment('');
+      setCoverPosition({ x: 0.5, y: 0.5, scale: 1.0 });
     }
     setPhotoFiles([]);
     setPhotoPreviewUrls([]);
+    setCoverPhotoIndex(null);
   }, [existingReview, isOpen]);
 
   const handleStarClick = (value: number) => {
@@ -85,7 +98,7 @@ export const CityReviewModal = ({
     }
 
     setSaving(true);
-    const success = await onSave(rating, comment, photoFiles);
+    const success = await onSave(rating, comment, photoFiles, coverPhotoIndex, coverPosition);
     setSaving(false);
 
     if (success) {
@@ -201,19 +214,41 @@ export const CityReviewModal = ({
                     <img
                       src={photo.photo_url}
                       alt="Foto da cidade"
-                      className="w-full h-full object-cover rounded-lg border-2 border-border"
+                      className={`w-full h-full object-cover rounded-lg border-2 ${
+                        photo.is_cover ? 'border-primary' : 'border-border'
+                      }`}
                     />
-                    {onDeletePhoto && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                        onClick={() => onDeletePhoto(photo.id, photo.photo_url)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    {photo.is_cover && (
+                      <Badge className="absolute top-1.5 left-1.5 bg-primary text-primary-foreground">
+                        <ImageIcon className="h-3 w-3 mr-1" />
+                        Capa
+                      </Badge>
                     )}
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {!photo.is_cover && onSetCoverPhoto && existingReview && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1 h-7 text-xs"
+                          onClick={() => onSetCoverPhoto(photo.id, existingReview.id)}
+                        >
+                          <ImageIcon className="h-3 w-3 mr-1" />
+                          Capa
+                        </Button>
+                      )}
+                      {onDeletePhoto && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="h-7 w-7 shadow-lg"
+                          onClick={() => onDeletePhoto(photo.id, photo.photo_url)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
                 
@@ -222,17 +257,37 @@ export const CityReviewModal = ({
                     <img
                       src={url}
                       alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover rounded-lg border-2 border-primary"
+                      className={`w-full h-full object-cover rounded-lg border-2 ${
+                        coverPhotoIndex === index ? 'border-primary' : 'border-border'
+                      }`}
                     />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                      onClick={() => handleRemoveNewPhoto(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    {coverPhotoIndex === index && (
+                      <Badge className="absolute top-1.5 left-1.5 bg-primary text-primary-foreground">
+                        <ImageIcon className="h-3 w-3 mr-1" />
+                        Capa
+                      </Badge>
+                    )}
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        type="button"
+                        variant={coverPhotoIndex === index ? 'default' : 'secondary'}
+                        size="sm"
+                        className="flex-1 h-7 text-xs"
+                        onClick={() => setCoverPhotoIndex(coverPhotoIndex === index ? null : index)}
+                      >
+                        <ImageIcon className="h-3 w-3 mr-1" />
+                        {coverPhotoIndex === index ? 'É Capa' : 'Definir Capa'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="h-7 w-7 shadow-lg"
+                        onClick={() => handleRemoveNewPhoto(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -260,6 +315,22 @@ export const CityReviewModal = ({
               </div>
             )}
           </div>
+
+          {/* Cover Photo Adjuster */}
+          {(() => {
+            const coverPhoto = existingPhotos.find(p => p.is_cover) || 
+              (coverPhotoIndex !== null && photoPreviewUrls[coverPhotoIndex] ? { photo_url: photoPreviewUrls[coverPhotoIndex] } : null);
+            
+            return coverPhoto ? (
+              <div className="space-y-3 pt-4 border-t">
+                <CoverPhotoAdjuster
+                  photoUrl={coverPhoto.photo_url}
+                  initialPosition={coverPosition}
+                  onPositionChange={setCoverPosition}
+                />
+              </div>
+            ) : null;
+          })()}
         </div>
 
         <DialogFooter className="px-6 py-4 border-t bg-muted/20 flex-row gap-2">
