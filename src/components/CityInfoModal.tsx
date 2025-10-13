@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Building2, Users, TrendingUp, TrendingDown, Globe, GraduationCap, DollarSign, Heart, ExternalLink } from 'lucide-react';
 import { CityData } from '@/data/mockData';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { QRCodeCanvas } from "qrcode.react";
@@ -17,6 +18,7 @@ interface CityInfoModalProps {
 
 export const CityInfoModal = ({ city, isOpen, onClose }: CityInfoModalProps) => {
   const qrCodeRef = useRef<HTMLCanvasElement>(null);
+  const isMobile = useIsMobile();
 
   // URL do IBGE para mais informações
   const ibgeUrl = city ? `https://cidades.ibge.gov.br/panorama-impresso?cod=${city.codigo_ibge}` : '';
@@ -48,7 +50,7 @@ export const CityInfoModal = ({ city, isOpen, onClose }: CityInfoModalProps) => 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto z-[9999] bg-background border border-border">
+      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-2xl max-h-[90vh]'} overflow-y-auto z-[9999] bg-background border border-border`}>
         <DialogHeader className="bg-background border-b border-border pb-4">
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />

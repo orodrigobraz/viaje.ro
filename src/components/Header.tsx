@@ -2,10 +2,12 @@ import { Compass, LogOut, User } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { toast } from 'sonner';
 
 export const Header = () => {
   const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
 
   const handleSignOut = async () => {
     try {
@@ -28,9 +30,11 @@ export const Header = () => {
               <h1 className="text-2xl font-bold text-foreground bg-gradient-to-r from-primary to-teal bg-clip-text text-transparent">
                 Viaje.ro
               </h1>
-              <p className="text-sm text-muted-foreground">
-                Descubra e registre suas aventuras pelo Brasil
-              </p>
+              {!isMobile && (
+                <p className="text-sm text-muted-foreground">
+                  Descubra e registre suas aventuras pelo Brasil
+                </p>
+              )}
             </div>
           </div>
           

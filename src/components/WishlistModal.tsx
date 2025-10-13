@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Heart, Trash2 } from 'lucide-react';
 import { City } from '@/data/mockData';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { WishlistMapView } from './WishlistMapView';
 
 interface WishlistModalProps {
@@ -12,6 +13,7 @@ interface WishlistModalProps {
 
 export const WishlistModal = ({ cities, onRemoveCity }: WishlistModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -24,7 +26,7 @@ export const WishlistModal = ({ cities, onRemoveCity }: WishlistModalProps) => {
           Lista de Desejos ({cities.length})
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto z-[9999] bg-background border border-border">
+      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-6xl max-h-[90vh]'} overflow-y-auto z-[9999] bg-background border border-border`}>
         <DialogHeader className="bg-background border-b border-border pb-4">
           <DialogTitle className="flex items-center gap-2">
             <Heart className="h-5 w-5 text-purple-600" />
@@ -32,9 +34,9 @@ export const WishlistModal = ({ cities, onRemoveCity }: WishlistModalProps) => {
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid lg:grid-cols-3 gap-6 h-[70vh]">
+        <div className={`grid ${isMobile ? 'grid-cols-1' : 'lg:grid-cols-3'} gap-6 ${isMobile ? 'h-auto' : 'h-[70vh]'}`}>
           {/* Lista de cidades */}
-          <div className="lg:col-span-1 space-y-4 overflow-y-auto">
+          <div className={`${isMobile ? '' : 'lg:col-span-1'} space-y-4 overflow-y-auto`}>
             <div>
               <h3 className="text-lg font-semibold text-purple-700 mb-3">
                 Destinos adicionados: ({cities.length})
@@ -76,7 +78,7 @@ export const WishlistModal = ({ cities, onRemoveCity }: WishlistModalProps) => {
           </div>
           
           {/* Mapa */}
-          <div className="lg:col-span-2 min-h-[500px] lg:h-full">
+          <div className={`${isMobile ? '' : 'lg:col-span-2'} ${isMobile ? 'min-h-[400px]' : 'min-h-[500px] lg:h-full'}`}>
             <WishlistMapView cities={cities} />
           </div>
         </div>

@@ -7,6 +7,7 @@ import { CityReview, CityReviewPhoto } from '@/hooks/useCityReviews';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CoverPhotoAdjuster } from './CoverPhotoAdjuster';
 import { Badge } from '@/components/ui/badge';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CityReviewModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export const CityReviewModal = ({
   const [saving, setSaving] = useState(false);
   const [coverPhotoIndex, setCoverPhotoIndex] = useState<number | null>(null);
   const [coverPosition, setCoverPosition] = useState({ x: 0.5, y: 0.5, scale: 1.0 });
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (existingReview) {
@@ -159,7 +161,7 @@ export const CityReviewModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col p-0">
+      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[95vh]' : 'sm:max-w-3xl max-h-[85vh]'} overflow-hidden flex flex-col p-0`}>
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="text-2xl">
             {existingReview ? 'Editar Avaliação' : 'Nova Avaliação'}
