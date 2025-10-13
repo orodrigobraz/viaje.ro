@@ -151,22 +151,39 @@ const Index = () => {
           }`}
         >
           {sidebarOpen && (
-            <div className="space-y-4">
-              <StateSelector 
-                selectedState={selectedState} 
-                onStateSelect={handleStateSelect} 
-              />
-              <CitySelector 
-                selectedState={selectedState} 
-                onAddCity={handleAddCity}
-                onAddToWishlist={handleAddToWishlist}
-              />
-              <CityList cities={visitedCities} onRemoveCity={handleRemoveCity} />
-              <StatisticsModal cities={visitedCities} />
-              <WishlistModal 
-                cities={wishlistCities} 
-                onRemoveCity={handleRemoveFromWishlist}
-              />
+            <div className="min-h-full flex flex-col">
+              <div className="space-y-4">
+                <StateSelector 
+                  selectedState={selectedState} 
+                  onStateSelect={handleStateSelect} 
+                />
+                <CitySelector 
+                  selectedState={selectedState} 
+                  onAddCity={handleAddCity}
+                  onAddToWishlist={handleAddToWishlist}
+                />
+                <CityList cities={visitedCities} onRemoveCity={handleRemoveCity} />
+                <StatisticsModal cities={visitedCities} />
+                <WishlistModal 
+                  cities={wishlistCities} 
+                  onRemoveCity={handleRemoveFromWishlist}
+                />
+              </div>
+              
+              {/* Footer no final do conteúdo */}
+              <footer className="mt-auto pt-8 pb-4 border-t border-border">
+                <p className="text-sm text-muted-foreground text-center">
+                  Desenvolvido de &hearts; por{' '}
+                  <a 
+                    href="https://orodrigobraz.github.io/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Rodrigo Braz
+                  </a>
+                </p>
+              </footer>
             </div>
           )}
         </div>
@@ -183,9 +200,17 @@ const Index = () => {
         onClick={() => setSidebarOpen(!sidebarOpen)}
       >
         {sidebarOpen ? (
-          <ChevronLeft className="h-6 w-6" />
+          <ChevronLeft 
+            className="text-white" 
+            size={32} 
+            strokeWidth={5}
+          />
         ) : (
-          <ChevronRight className="h-6 w-6" />
+          <ChevronRight 
+            className="text-white" 
+            size={32} 
+            strokeWidth={5}
+          />
         )}
       </Button>
     </div>

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Settings, Palette, RotateCcw, Heart, Moon, Sun, Save } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useTheme } from './ThemeProvider';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { statesData } from '@/data/mockData';
 
 const colorOptions = [
@@ -35,6 +36,7 @@ export const SettingsModal = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { stateColors, wishlistColor, setStateColor, setWishlistColor, resetStateColors, saveSettings, isSaving, hasUnsavedChanges } = useSettings();
   const { theme, setTheme } = useTheme();
+  const isMobile = useIsMobile();
 
   const handleSave = async () => {
     await saveSettings();
@@ -52,7 +54,7 @@ export const SettingsModal = () => {
           <span className="sr-only">Configurações</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[85vh] bg-background border border-border">
+      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-4xl max-h-[85vh]'} bg-background border border-border`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-primary" />

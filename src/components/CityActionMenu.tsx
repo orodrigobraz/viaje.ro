@@ -1,6 +1,7 @@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Info, Star } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CityActionMenuProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const CityActionMenu = ({
   onViewReview,
   onAddReview,
 }: CityActionMenuProps) => {
+  const isMobile = useIsMobile();
   const handleViewInfo = () => {
     onClose();
     onViewInfo();
@@ -39,7 +41,7 @@ export const CityActionMenu = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={`${isMobile ? 'max-w-[90vw]' : 'sm:max-w-md'}`}>
         <div className="space-y-4">
           <div className="text-center">
             <h2 className="text-xl font-semibold">{cityName}</h2>

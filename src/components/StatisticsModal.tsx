@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { BarChart3, Globe, Building, Info, TrendingUp, TrendingDown, Users, GraduationCap, Heart, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import { City, countryData, getStateArea, citiesData } from '@/data/mockData';
+import { useIsMobile } from '@/hooks/use-mobile';
 import ReactECharts from 'echarts-for-react';
 
 interface StatisticsModalProps {
@@ -14,6 +15,7 @@ interface StatisticsModalProps {
 export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
+  const isMobile = useIsMobile();
 
   // Component to render expandable city list
   const ExpandableCityList = ({ cities: cityList, bgColorClass, textColorClass, borderColorClass, iconColorClass, titleColorClass, subtitleColorClass, icon: Icon, value, unit }: {
@@ -700,7 +702,7 @@ export const StatisticsModal = ({ cities }: StatisticsModalProps) => {
           Ver Estatísticas Completas
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto z-[9999] bg-background border border-border">
+      <DialogContent className={`${isMobile ? 'max-w-[95vw] max-h-[95vh]' : 'max-w-[95vw] md:max-w-4xl max-h-[90vh]'} overflow-y-auto z-[9999] bg-background border border-border`}>
         <DialogHeader className="bg-background border-b border-border pb-4">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <BarChart3 className="h-5 w-5 text-primary" />
