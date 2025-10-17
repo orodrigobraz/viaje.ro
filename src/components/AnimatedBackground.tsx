@@ -19,14 +19,22 @@ const AnimatedBackground = () => {
 
 
   useEffect(() => {
-    // Verificar se as imagens existem
-    const checkImages = async () => {
+    // Pre-carregar todas as imagens para transições suaves
+    const preloadImages = async () => {
       const statuses = await Promise.all(
         backgroundImages.map(async (src) => {
           try {
-            const response = await fetch(src, { method: 'HEAD' });
-            console.log(`Imagem ${src}: ${response.ok ? 'OK' : 'ERRO'} - Status: ${response.status}`);
-            return response.ok;
+            // Pre-carregar a imagem
+            const img = new Image();
+            const loadPromise = new Promise<boolean>((resolve) => {
+              img.onload = () => resolve(true);
+              img.onerror = () => resolve(false);
+              img.src = src;
+            });
+            
+            const isLoaded = await loadPromise;
+            console.log(`Imagem ${src}: ${isLoaded ? 'Carregada' : 'Erro'}`);
+            return isLoaded;
           } catch (error) {
             console.log(`Erro ao carregar ${src}:`, error);
             return false;
@@ -36,7 +44,7 @@ const AnimatedBackground = () => {
       setImageLoadStatus(statuses);
     };
 
-    checkImages();
+    preloadImages();
   }, []);
 
   useEffect(() => {
@@ -44,7 +52,7 @@ const AnimatedBackground = () => {
       setCurrentImageIndex((prevIndex) => 
         (prevIndex + 1) % backgroundImages.length
       );
-    }, 5000); // Muda a cada 5 segundos
+    }, 15000); // Muda a cada 15 segundos
 
     return () => clearInterval(interval);
   }, [backgroundImages.length]);
@@ -62,15 +70,17 @@ const AnimatedBackground = () => {
       }}
     >
       
-      {/* Tentar carregar as imagens por cima */}
+      {/* Imagens com transição suave */}
       {backgroundImages.map((image, index) => {
         const isLoaded = imageLoadStatus[index];
+        const isActive = index === currentImageIndex && isLoaded;
+        
         return (
           <div
             key={`image-${index}`}
-          className={`absolute inset-0 transition-opacity duration-3000 ease-in-out ${
-            index === currentImageIndex && isLoaded ? 'opacity-90' : 'opacity-0'
-          }`}
+            className={`absolute inset-0 transition-all duration-[4000ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
+              isActive ? 'opacity-90 scale-100' : 'opacity-0 scale-105'
+            }`}
             style={{
               backgroundImage: isLoaded ? `url(${image})` : 'none',
               backgroundSize: 'cover',
@@ -82,15 +92,18 @@ const AnimatedBackground = () => {
               right: 0,
               bottom: 0,
               width: '100%',
-              height: '100%'
+              height: '100%',
+              transform: isActive ? 'scale(1)' : 'scale(1.05)',
+              filter: isActive ? 'blur(0px)' : 'blur(1px)',
+              transition: 'opacity 4s cubic-bezier(0.4, 0, 0.2, 1), transform 4s cubic-bezier(0.4, 0, 0.2, 1), filter 4s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           />
         );
       })}
       
-      {/* Overlay escuro para melhorar a legibilidade */}
+      {/* Overlay com gradiente suave para melhorar a legibilidade */}
       <div 
-        className="absolute inset-0 bg-black/20"
+        className="absolute inset-0"
         style={{
           position: 'absolute',
           top: 0,
@@ -98,7 +111,8 @@ const AnimatedBackground = () => {
           right: 0,
           bottom: 0,
           width: '100%',
-          height: '100%'
+          height: '100%',
+          background: 'linear-gradient(135deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.25) 50%, rgba(0,0,0,0.15) 100%)'
         }}
       />
       
