@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCities } from '@/hooks/useCities';
 import { searchCity } from '@/data/mockData';
 import { toast } from 'sonner';
+import AnimatedBackground from '@/components/AnimatedBackground';
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
@@ -115,8 +116,9 @@ const Index = () => {
   // Mostrar tela de login se não estiver autenticado
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen relative flex items-center justify-center p-4">
+        <AnimatedBackground />
+        <Card className="w-full max-w-md relative z-10 bg-background/95 backdrop-blur-sm">
           <CardContent className="pt-6 text-center space-y-4">
             <LogIn className="mx-auto h-12 w-12 text-muted-foreground" />
             <div>
