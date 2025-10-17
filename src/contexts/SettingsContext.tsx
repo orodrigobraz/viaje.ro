@@ -85,16 +85,7 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
     }
   }, [user]);
 
-  // Salvar automaticamente quando houver mudanças
-  useEffect(() => {
-    if (hasUnsavedChanges && user) {
-      const timeoutId = setTimeout(() => {
-        saveSettings();
-      }, 1000); // Aguarda 1 segundo após a última mudança
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [hasUnsavedChanges, stateColors, wishlistColor, user]);
+  // Auto-salvamento desabilitado - só salva quando o usuário clicar no botão
 
   const loadSettings = async () => {
     if (!user) return;
@@ -150,6 +141,10 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
     if (!user) {
       toast.error('Você precisa estar logado para salvar as configurações');
       return;
+    }
+
+    if (!hasUnsavedChanges) {
+      return; // Não há mudanças para salvar
     }
 
     setIsSaving(true);
