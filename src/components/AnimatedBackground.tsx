@@ -5,7 +5,6 @@ const AnimatedBackground = () => {
   const [imageLoadStatus, setImageLoadStatus] = useState<boolean[]>([]);
   
   // Array com as imagens dos mapas
-  // IMPORTANTE: Adicione suas imagens na pasta public/ com estes nomes exatos
   const backgroundImages = [
     '/viaje.ro/mapa-rio-grande-sul.png',      // Imagem do Rio Grande do Sul
     '/viaje.ro/mapa-sao-paulo.png',           // Imagem de São Paulo  
@@ -49,13 +48,18 @@ const AnimatedBackground = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImageIndex((prevIndex) => 
-        (prevIndex + 1) % backgroundImages.length
-      );
+      setCurrentImageIndex((prevIndex) => {
+        let nextIndex;
+        do {
+          nextIndex = Math.floor(Math.random() * backgroundImages.length);
+        } while (nextIndex === prevIndex);
+        return nextIndex;
+      });
     }, 15000); // Muda a cada 15 segundos
-
+  
     return () => clearInterval(interval);
   }, [backgroundImages.length]);
+  
 
   return (
     <div 
@@ -78,7 +82,7 @@ const AnimatedBackground = () => {
         return (
           <div
             key={`image-${index}`}
-            className={`absolute inset-0 transition-all duration-[4000ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
+            className={`absolute inset-0 transition-all duration-&lsqb;4000ms&rsqb ease-&lsqb;cubic-bezier(0.4,0,0.2,1)&rsqb ${
               isActive ? 'opacity-90 scale-100' : 'opacity-0 scale-105'
             }`}
             style={{
