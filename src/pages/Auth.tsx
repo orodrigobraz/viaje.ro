@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Mail, Lock, User, Chrome } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import AnimatedBackground from '@/components/AnimatedBackground';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -98,8 +99,9 @@ const Auth = () => {
 
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen relative flex items-center justify-center p-4">
+      <AnimatedBackground />
+      <Card className="w-full max-w-md relative z-10 bg-background/95 backdrop-blur-sm">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
             {isSignUp ? 'Criar Conta' : 'Entrar'}
