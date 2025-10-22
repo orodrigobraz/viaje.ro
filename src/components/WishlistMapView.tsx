@@ -106,7 +106,7 @@ export const WishlistMapView = ({ cities }: WishlistMapViewProps) => {
             }
             loadedCitiesRef.current.add(`${city.properties.nome}-${city.properties.estado}`);
           } catch (error) {
-            console.warn(`Erro ao carregar geometria para ${city.properties.nome}:`, error);
+            // Erro ao carregar geometria
             cityFeatures.push({
               type: 'Feature',
               properties: {
@@ -146,7 +146,7 @@ export const WishlistMapView = ({ cities }: WishlistMapViewProps) => {
           map.fitBounds(group.getBounds(), { padding: [20, 20] });
         }
       } catch (error) {
-        console.error('Erro ao carregar geometrias:', error);
+        // Erro ao carregar geometrias
       } finally {
         isLoadingRef.current = false;
       }

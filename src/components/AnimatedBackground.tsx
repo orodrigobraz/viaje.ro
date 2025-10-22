@@ -32,10 +32,8 @@ const AnimatedBackground = () => {
             });
             
             const isLoaded = await loadPromise;
-            console.log(`Imagem ${src}: ${isLoaded ? 'Carregada' : 'Erro'}`);
             return isLoaded;
           } catch (error) {
-            console.log(`Erro ao carregar ${src}:`, error);
             return false;
           }
         })
@@ -55,7 +53,7 @@ const AnimatedBackground = () => {
         } while (nextIndex === prevIndex);
         return nextIndex;
       });
-    }, 15000); // Muda a cada 15 segundos
+    }, 10000); // Muda a cada 10 segundos
   
     return () => clearInterval(interval);
   }, [backgroundImages.length]);

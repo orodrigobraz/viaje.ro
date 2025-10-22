@@ -48,7 +48,6 @@ export const findMunicipalityGeometry = async (cityName: string, stateName: stri
     }
 
     if (error || !municipality) {
-      console.warn(`Município não encontrado: ${cityName}, ${stateName}`);
       return null;
     }
 
@@ -70,7 +69,6 @@ export const findMunicipalityGeometry = async (cityName: string, stateName: stri
 
     return geoJsonFeature;
   } catch (error) {
-    console.warn(`Erro ao buscar geometria para ${cityName}, ${stateName}:`, error);
     return null;
   }
 };
