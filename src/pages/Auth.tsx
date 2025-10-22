@@ -116,7 +116,7 @@ const Auth = () => {
         
         <CardContent className="space-y-4">
           {/* Social Login Buttons */}
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Button 
               onClick={handleGoogleAuth}
               variant="outline" 
@@ -126,7 +126,7 @@ const Auth = () => {
               <Chrome className="mr-2 h-4 w-4" />
               Continuar com Google
             </Button>
-          </div>
+          </div> */}
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -134,7 +134,7 @@ const Auth = () => {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Ou continue com email
+                Faça login para continuar
               </span>
             </div>
           </div>

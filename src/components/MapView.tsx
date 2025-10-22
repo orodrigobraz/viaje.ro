@@ -89,8 +89,6 @@ export const MapView = ({ cities }: MapViewProps) => {
     const currentCitiesKey = cities.map(c => `${c.properties.nome}-${c.properties.estado}`).sort().join(',');
     const loadedCitiesKey = Array.from(loadedCitiesRef.current).sort().join(',');
     
-    console.log('MapView - Cidades recebidas:', cities.length);
-    console.log('MapView - Primeira cidade:', cities[0]);
     
     if (currentCitiesKey === loadedCitiesKey) return;
 
@@ -104,7 +102,6 @@ export const MapView = ({ cities }: MapViewProps) => {
     loadedCitiesRef.current.clear();
 
     if (cities.length === 0) {
-      console.log('MapView - Nenhuma cidade para exibir');
       isLoadingRef.current = false;
       return;
     }
@@ -113,15 +110,12 @@ export const MapView = ({ cities }: MapViewProps) => {
       try {
         const cityFeatures: GeoJSONFeature[] = [];
         
-        console.log('MapView - Iniciando carregamento de geometrias para', cities.length, 'cidades');
         
         for (const city of cities) {
           try {
-            console.log('MapView - Buscando geometria para:', city.properties.nome, city.properties.estado);
             const realGeometry = await findMunicipalityGeometry(city.properties.nome, city.properties.estado);
             
             if (realGeometry) {
-              console.log('MapView - Geometria encontrada para:', city.properties.nome);
               const convertedFeature: GeoJSONFeature = {
                 type: "Feature",
                 properties: { 
@@ -134,22 +128,18 @@ export const MapView = ({ cities }: MapViewProps) => {
               };
               cityFeatures.push(convertedFeature);
               loadedCitiesRef.current.add(`${city.properties.nome}-${city.properties.estado}`);
-            } else {
-              console.warn(`MapView - Geometria não encontrada para ${city.properties.nome}, ${city.properties.estado}`);
             }
           } catch (error) {
-            console.warn(`Erro ao carregar geometria para ${city.properties.nome}:`, error);
+            // Erro ao carregar geometria
           }
         }
 
-        console.log('MapView - Total de features carregadas:', cityFeatures.length);
 
         cityFeatures.forEach((feature) => {
           if (mapInstanceRef.current) {
             const state = feature.properties.estado;
             const stateColor = stateColors[state] || '#ff7800';
             
-            console.log('MapView - Adicionando camada para:', feature.properties.nome, 'cor:', stateColor);
             
             const cityData = getCityData(feature.properties.nome, feature.properties.estado);
             const review = cityData ? getReview(cityData.nome, cityData.estado) : undefined;
@@ -207,7 +197,6 @@ export const MapView = ({ cities }: MapViewProps) => {
             
             layer.addTo(mapInstanceRef.current);
             layersRef.current.push(layer);
-            console.log('MapView - Camada adicionada, total de camadas:', layersRef.current.length);
           }
         });
 

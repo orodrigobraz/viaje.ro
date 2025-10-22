@@ -24,9 +24,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session?.user ?? null);
         
         if (event === 'SIGNED_IN') {
-          console.log('User signed in:', session?.user?.email);
+          // User signed in
         } else if (event === 'SIGNED_OUT') {
-          console.log('User signed out');
+          // User signed out
         }
         
         setLoading(false);
