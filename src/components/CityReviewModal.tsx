@@ -217,17 +217,17 @@ export const CityReviewModal = ({
                       src={photo.photo_url}
                       alt="Foto da cidade"
                       className={`w-full h-full object-cover rounded-lg border-2 ${
-                        photo.is_cover ? 'border-primary' : 'border-border'
+                        photo.is_cover === true ? 'border-primary' : 'border-border'
                       }`}
                     />
-                    {photo.is_cover && (
+                    {photo.is_cover === true && (
                       <Badge className="absolute top-1.5 left-1.5 bg-primary text-primary-foreground">
                         <ImageIcon className="h-3 w-3 mr-1" />
                         Capa
                       </Badge>
                     )}
                     <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {!photo.is_cover && onSetCoverPhoto && existingReview && (
+                      {photo.is_cover !== true && onSetCoverPhoto && existingReview && (
                         <Button
                           type="button"
                           variant="secondary"
@@ -320,13 +320,15 @@ export const CityReviewModal = ({
 
           {/* Cover Photo Adjuster */}
           {(() => {
-            const coverPhoto = existingPhotos.find(p => p.is_cover) || 
+            const coverPhoto = existingPhotos.find(p => p.is_cover === true) || 
               (coverPhotoIndex !== null && photoPreviewUrls[coverPhotoIndex] ? { photo_url: photoPreviewUrls[coverPhotoIndex] } : null);
             
             return coverPhoto ? (
               <div className="space-y-3 pt-4 border-t">
                 <CoverPhotoAdjuster
                   photoUrl={coverPhoto.photo_url}
+                  cityName={cityName}
+                  stateName={stateName}
                   initialPosition={coverPosition}
                   onPositionChange={setCoverPosition}
                 />
