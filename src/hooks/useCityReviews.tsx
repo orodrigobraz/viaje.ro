@@ -8,6 +8,7 @@ export interface CityReview {
   user_id: string;
   city_name: string;
   state_name: string;
+  city_code: string | null;
   rating: number;
   comment: string | null;
   created_at: string;
@@ -22,7 +23,7 @@ export interface CityReviewPhoto {
   review_id: string;
   photo_url: string;
   created_at: string;
-  is_cover: boolean;
+  is_cover: boolean | null;
 }
 
 export const useCityReviews = () => {
@@ -44,9 +45,12 @@ export const useCityReviews = () => {
       if (reviewsError) throw reviewsError;
 
       const reviewsMap = new Map<string, CityReview>();
-      reviewsData?.forEach((review) => {
+      reviewsData?.forEach((review: any) => {
         const key = `${review.city_name}-${review.state_name}`;
-        reviewsMap.set(key, review);
+        reviewsMap.set(key, {
+          ...review,
+          city_code: review.city_code || null,
+        } as CityReview);
       });
       setReviews(reviewsMap);
 
@@ -61,9 +65,16 @@ export const useCityReviews = () => {
         if (photosError) throw photosError;
 
         const photosMap = new Map<string, CityReviewPhoto[]>();
-        photosData?.forEach((photo) => {
+        photosData?.forEach((photo: any) => {
+          const photoTyped: CityReviewPhoto = {
+            id: photo.id,
+            review_id: photo.review_id,
+            photo_url: photo.photo_url,
+            created_at: photo.created_at,
+            is_cover: photo.is_cover === null ? null : Boolean(photo.is_cover),
+          };
           const existing = photosMap.get(photo.review_id) || [];
-          photosMap.set(photo.review_id, [...existing, photo]);
+          photosMap.set(photo.review_id, [...existing, photoTyped]);
         });
         setPhotos(photosMap);
       }
@@ -104,6 +115,17 @@ export const useCityReviews = () => {
     if (!user) return false;
 
     try {
+      // Get city_code from municipios table
+      const { data: municipioData } = await supabase
+        .from('municipios')
+        .select('cd_mun')
+        .ilike('nm_mun', cityName)
+        .or(`nm_uf.ilike.${stateName},sigla_uf.ilike.${stateName}`)
+        .limit(1)
+        .single();
+      
+      const cityCode = municipioData?.cd_mun || null;
+
       // Upsert review
       const { data: reviewData, error: reviewError } = await supabase
         .from('city_reviews')
@@ -111,6 +133,7 @@ export const useCityReviews = () => {
           user_id: user.id,
           city_name: cityName,
           state_name: stateName,
+          city_code: cityCode,
           rating,
           comment: comment || null,
           cover_photo_position_x: coverPosition.x,
@@ -127,6 +150,8 @@ export const useCityReviews = () => {
 
       // Upload photos
       if (photoFiles.length > 0) {
+        const newPhotoIds: string[] = [];
+        
         for (let i = 0; i < photoFiles.length; i++) {
           const file = photoFiles[i];
           const fileExt = file.name.split('.').pop();
@@ -142,15 +167,35 @@ export const useCityReviews = () => {
             .from('city-review-photos')
             .getPublicUrl(fileName);
 
-          const { error: photoError } = await supabase
+          const { data: insertedPhoto, error: photoError } = await supabase
             .from('city_review_photos')
             .insert({
               review_id: reviewData.id,
               photo_url: publicUrl,
-              is_cover: coverPhotoIndex === i,
-            });
+              is_cover: false, // We'll set cover after all photos are inserted
+            })
+            .select()
+            .single();
 
           if (photoError) throw photoError;
+          if (insertedPhoto) {
+            newPhotoIds.push(insertedPhoto.id);
+          }
+        }
+        
+        // If a new photo was set as cover, remove cover from all other photos and set the new one
+        if (coverPhotoIndex !== null && coverPhotoIndex >= 0 && coverPhotoIndex < newPhotoIds.length) {
+          // Remove cover from all photos of this review
+          await supabase
+            .from('city_review_photos')
+            .update({ is_cover: false } as any)
+            .eq('review_id', reviewData.id);
+          
+          // Set the new photo as cover
+          await supabase
+            .from('city_review_photos')
+            .update({ is_cover: true } as any)
+            .eq('id', newPhotoIds[coverPhotoIndex]);
         }
       }
 
@@ -249,7 +294,7 @@ export const useCityReviews = () => {
       // Remove cover from all photos of this review
       const { error: removeError } = await supabase
         .from('city_review_photos')
-        .update({ is_cover: false })
+        .update({ is_cover: false } as any)
         .eq('review_id', reviewId);
 
       if (removeError) throw removeError;
@@ -257,7 +302,7 @@ export const useCityReviews = () => {
       // Set new cover photo
       const { error: setCoverError } = await supabase
         .from('city_review_photos')
-        .update({ is_cover: true })
+        .update({ is_cover: true } as any)
         .eq('id', photoId);
 
       if (setCoverError) throw setCoverError;

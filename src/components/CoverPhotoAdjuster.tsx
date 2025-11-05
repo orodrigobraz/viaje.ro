@@ -1,33 +1,87 @@
 import { useState, useRef, useEffect } from 'react';
 import { Slider } from '@/components/ui/slider';
-import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Move } from 'lucide-react';
+import { findMunicipalityGeometry, GeoJSONFeature } from '@/utils/geoJsonLoader';
 
 interface CoverPhotoAdjusterProps {
   photoUrl: string;
+  cityName: string;
+  stateName: string;
   initialPosition?: { x: number; y: number; scale: number };
   onPositionChange: (position: { x: number; y: number; scale: number }) => void;
 }
 
 export const CoverPhotoAdjuster = ({
   photoUrl,
+  cityName,
+  stateName,
   initialPosition = { x: 0.5, y: 0.5, scale: 1.0 },
   onPositionChange,
 }: CoverPhotoAdjusterProps) => {
   const [position, setPosition] = useState(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
+  const [geometry, setGeometry] = useState<GeoJSONFeature | null>(null);
+  const [svgPath, setSvgPath] = useState<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
 
+  // Load city geometry
+  useEffect(() => {
+    const loadGeometry = async () => {
+      const geoData = await findMunicipalityGeometry(cityName, stateName);
+      if (geoData) {
+        setGeometry(geoData);
+        
+        // Convert geometry coordinates to SVG path
+        const coords = geoData.geometry.type === 'Polygon' 
+          ? geoData.geometry.coordinates[0]
+          : geoData.geometry.coordinates[0][0];
+        
+        if (coords && coords.length > 0) {
+          // Calculate bounds for normalization
+          const lngs = coords.map(c => c[0]);
+          const lats = coords.map(c => c[1]);
+          const minLng = Math.min(...lngs);
+          const maxLng = Math.max(...lngs);
+          const minLat = Math.min(...lats);
+          const maxLat = Math.max(...lats);
+          const lngSpan = maxLng - minLng;
+          const latSpan = maxLat - minLat;
+          
+          // Create SVG path with normalized coordinates (0-100)
+          const pathData = coords.map((coord, i) => {
+            const x = ((coord[0] - minLng) / lngSpan) * 100;
+            const y = ((maxLat - coord[1]) / latSpan) * 100; // Invert Y axis
+            return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+          }).join(' ') + ' Z';
+          
+          setSvgPath(pathData);
+        }
+      }
+    };
+    
+    loadGeometry();
+  }, [cityName, stateName]);
+
+  // Update position when initialPosition changes
+  useEffect(() => {
+    setPosition(initialPosition);
+  }, [initialPosition]);
+
   useEffect(() => {
     onPositionChange(position);
-  }, [position]);
+  }, [position, onPositionChange]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+
+    const relativeX = (e.clientX - rect.left) / rect.width;
+    const relativeY = (e.clientY - rect.top) / rect.height;
     startPosRef.current = {
-      x: e.clientX - position.x * 200,
-      y: e.clientY - position.y * 200,
+      x: relativeX - position.x,
+      y: relativeY - position.y,
     };
   };
 
@@ -35,8 +89,11 @@ export const CoverPhotoAdjuster = ({
     if (!isDragging || !containerRef.current) return;
 
     const rect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (e.clientX - startPosRef.current.x) / 200));
-    const y = Math.max(0, Math.min(1, (e.clientY - startPosRef.current.y) / 200));
+    const relativeX = (e.clientX - rect.left) / rect.width;
+    const relativeY = (e.clientY - rect.top) / rect.height;
+    
+    const x = Math.max(0, Math.min(1, relativeX - startPosRef.current.x));
+    const y = Math.max(0, Math.min(1, relativeY - startPosRef.current.y));
 
     setPosition((prev) => ({ ...prev, x, y }));
   };
@@ -65,17 +122,49 @@ export const CoverPhotoAdjuster = ({
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-transform"
-          style={{
-            backgroundImage: `url(${photoUrl})`,
-            transform: `translate(${(position.x - 0.5) * 100}%, ${(position.y - 0.5) * 100}%) scale(${position.scale})`,
-          }}
-        />
+        {svgPath ? (
+          <svg
+            className="absolute inset-0 w-full h-full"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <defs>
+              <clipPath id="city-clip">
+                <path d={svgPath} />
+              </clipPath>
+            </defs>
+            
+            {/* Photo clipped to city shape */}
+            <g clipPath="url(#city-clip)">
+              <image
+                href={photoUrl}
+                x={position.x * 100 - 50 * position.scale}
+                y={position.y * 100 - 50 * position.scale}
+                width={100 * position.scale}
+                height={100 * position.scale}
+                preserveAspectRatio="xMidYMid slice"
+              />
+            </g>
+            
+            {/* City outline */}
+            <path
+              d={svgPath}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="0.5"
+              className="text-primary"
+            />
+          </svg>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+            Carregando geometria...
+          </div>
+        )}
         
-        {/* Crosshair */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-8 h-8 border-2 border-primary rounded-full opacity-50" />
+        {/* Info overlay */}
+        <div className="absolute bottom-2 left-2 bg-background/80 backdrop-blur-sm px-2 py-1 rounded text-xs pointer-events-none">
+          <div className="font-semibold">{cityName}</div>
+          <div className="text-muted-foreground">{stateName}</div>
         </div>
       </div>
 
