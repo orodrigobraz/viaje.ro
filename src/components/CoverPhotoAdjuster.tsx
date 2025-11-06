@@ -21,26 +21,38 @@ export const CoverPhotoAdjuster = ({
   const [position, setPosition] = useState(initialPosition);
   const [isDragging, setIsDragging] = useState(false);
   const [geometry, setGeometry] = useState<GeoJSONFeature | null>(null);
-  const [svgPath, setSvgPath] = useState<string>('');
+  const [svgPaths, setSvgPaths] = useState<string[]>([]);
+  const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
 
-  // Load city geometry
+  // Carregar geometria da cidade
   useEffect(() => {
     const loadGeometry = async () => {
       const geoData = await findMunicipalityGeometry(cityName, stateName);
       if (geoData) {
         setGeometry(geoData);
         
-        // Convert geometry coordinates to SVG path
-        const coords = geoData.geometry.type === 'Polygon' 
-          ? geoData.geometry.coordinates[0]
-          : geoData.geometry.coordinates[0][0];
+        // Coletar todas as coordenadas para calcular os limites globais
+        let allCoords: number[][] = [];
         
-        if (coords && coords.length > 0) {
-          // Calculate bounds for normalization
-          const lngs = coords.map(c => c[0]);
-          const lats = coords.map(c => c[1]);
+        if (geoData.geometry.type === 'Polygon') {
+          // Para Polygon, pegar todas as coordenadas do polígono externo
+          const polygonCoords = geoData.geometry.coordinates as number[][][];
+          allCoords = polygonCoords[0];
+        } else if (geoData.geometry.type === 'MultiPolygon') {
+          // Para MultiPolygon, coletar coordenadas de TODOS os polígonos (continente e ilhas)
+          const multiPolygonCoords = geoData.geometry.coordinates as number[][][][];
+          multiPolygonCoords.forEach((polygon: number[][][]) => {
+            allCoords = allCoords.concat(polygon[0]);
+          });
+        }
+        
+        if (allCoords.length > 0) {
+          // Calcular limites globais de toda a geometria
+          const lngs = allCoords.map(c => c[0]);
+          const lats = allCoords.map(c => c[1]);
           const minLng = Math.min(...lngs);
           const maxLng = Math.max(...lngs);
           const minLat = Math.min(...lats);
@@ -48,14 +60,59 @@ export const CoverPhotoAdjuster = ({
           const lngSpan = maxLng - minLng;
           const latSpan = maxLat - minLat;
           
-          // Create SVG path with normalized coordinates (0-100)
-          const pathData = coords.map((coord, i) => {
-            const x = ((coord[0] - minLng) / lngSpan) * 100;
-            const y = ((maxLat - coord[1]) / latSpan) * 100; // Invert Y axis
-            return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
-          }).join(' ') + ' Z';
+          // Calcular proporção correta da geometria (com limites para evitar extremos)
+          const calculatedAspectRatio = lngSpan / latSpan;
+          // Limitar entre 0.5 e 3.0 para manter o container em tamanho razoável
+          const clampedAspectRatio = Math.max(0.5, Math.min(3.0, calculatedAspectRatio));
+          setAspectRatio(clampedAspectRatio);
           
-          setSvgPath(pathData);
+          // Processar todos os polígonos (para MultiPolygon, inclui continente e ilhas)
+          const paths: string[] = [];
+          
+          if (geoData.geometry.type === 'Polygon') {
+            // Processar o polígono externo
+            const polygonCoords = geoData.geometry.coordinates as number[][][];
+            const pathData = polygonCoords[0].map((coord, i) => {
+              const x = ((coord[0] - minLng) / lngSpan) * 100;
+              const y = ((maxLat - coord[1]) / latSpan) * 100;
+              return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+            }).join(' ') + ' Z';
+            paths.push(pathData);
+            
+            // Processar buracos (holes) se existirem
+            for (let i = 1; i < polygonCoords.length; i++) {
+              const holePath = polygonCoords[i].map((coord, j) => {
+                const x = ((coord[0] - minLng) / lngSpan) * 100;
+                const y = ((maxLat - coord[1]) / latSpan) * 100;
+                return `${j === 0 ? 'M' : 'L'} ${x} ${y}`;
+              }).join(' ') + ' Z';
+              paths.push(holePath);
+            }
+          } else if (geoData.geometry.type === 'MultiPolygon') {
+            // Processar TODOS os polígonos do MultiPolygon (continente e ilhas)
+            const multiPolygonCoords = geoData.geometry.coordinates as number[][][][];
+            multiPolygonCoords.forEach((polygon: number[][][]) => {
+              // Polígono externo
+              const pathData = polygon[0].map((coord, i) => {
+                const x = ((coord[0] - minLng) / lngSpan) * 100;
+                const y = ((maxLat - coord[1]) / latSpan) * 100;
+                return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+              }).join(' ') + ' Z';
+              paths.push(pathData);
+              
+              // Buracos (holes) se existirem
+              for (let i = 1; i < polygon.length; i++) {
+                const holePath = polygon[i].map((coord, j) => {
+                  const x = ((coord[0] - minLng) / lngSpan) * 100;
+                  const y = ((maxLat - coord[1]) / latSpan) * 100;
+                  return `${j === 0 ? 'M' : 'L'} ${x} ${y}`;
+                }).join(' ') + ' Z';
+                paths.push(holePath);
+              }
+            });
+          }
+          
+          setSvgPaths(paths);
         }
       }
     };
@@ -63,7 +120,17 @@ export const CoverPhotoAdjuster = ({
     loadGeometry();
   }, [cityName, stateName]);
 
-  // Update position when initialPosition changes
+  // Carregar dimensões reais da imagem
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      const imgAspectRatio = img.width / img.height;
+      setImageAspectRatio(imgAspectRatio);
+    };
+    img.src = photoUrl;
+  }, [photoUrl]);
+
+  // Atualizar posição quando initialPosition mudar
   useEffect(() => {
     setPosition(initialPosition);
   }, [initialPosition]);
@@ -116,13 +183,14 @@ export const CoverPhotoAdjuster = ({
       {/* Preview Container */}
       <div
         ref={containerRef}
-        className="relative w-full aspect-video bg-muted rounded-lg overflow-hidden border-2 border-border cursor-move"
+        className="relative w-full bg-muted rounded-lg overflow-hidden border-2 border-border cursor-move"
+        style={{ aspectRatio: aspectRatio }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        {svgPath ? (
+        {svgPaths.length > 0 ? (
           <svg
             className="absolute inset-0 w-full h-full"
             viewBox="0 0 100 100"
@@ -130,30 +198,57 @@ export const CoverPhotoAdjuster = ({
           >
             <defs>
               <clipPath id="city-clip">
-                <path d={svgPath} />
+                {svgPaths.map((path, index) => (
+                  <path key={index} d={path} />
+                ))}
               </clipPath>
             </defs>
             
-            {/* Photo clipped to city shape */}
+            {/* Foto recortada no formato da cidade */}
             <g clipPath="url(#city-clip)">
-              <image
-                href={photoUrl}
-                x={position.x * 100 - 50 * position.scale}
-                y={position.y * 100 - 50 * position.scale}
-                width={100 * position.scale}
-                height={100 * position.scale}
-                preserveAspectRatio="xMidYMid slice"
-              />
+              {(() => {
+                // Calcular dimensões mantendo proporção real da imagem
+                const containerAspectRatio = aspectRatio;
+                let imgWidth: number;
+                let imgHeight: number;
+                
+                if (imageAspectRatio > containerAspectRatio) {
+                  // Imagem é mais larga - ajustar pela largura
+                  imgWidth = 100 * position.scale;
+                  imgHeight = imgWidth / imageAspectRatio;
+                } else {
+                  // Imagem é mais alta - ajustar pela altura
+                  imgHeight = 100 * position.scale;
+                  imgWidth = imgHeight * imageAspectRatio;
+                }
+                
+                const imgX = position.x * 100 - (imgWidth / 2);
+                const imgY = position.y * 100 - (imgHeight / 2);
+                
+                return (
+                  <image
+                    href={photoUrl}
+                    x={imgX}
+                    y={imgY}
+                    width={imgWidth}
+                    height={imgHeight}
+                    preserveAspectRatio="none"
+                  />
+                );
+              })()}
             </g>
             
-            {/* City outline */}
-            <path
-              d={svgPath}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="0.5"
-              className="text-primary"
-            />
+            {/* Contorno da cidade (todos os polígonos) */}
+            {svgPaths.map((path, index) => (
+              <path
+                key={index}
+                d={path}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="0.5"
+                className="text-primary"
+              />
+            ))}
           </svg>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
