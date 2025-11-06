@@ -120,38 +120,43 @@ export const CityReviewModal = ({
 
   const renderStars = () => {
     const stars = [];
+    const currentRating = hoverRating || rating;
+    
     for (let i = 1; i <= 5; i++) {
-      const isFilled = i <= (hoverRating || rating);
-      const isHalf = !isFilled && i - 0.5 === (hoverRating || rating);
+      const isFilled = i <= currentRating;
+      const isHalf = !isFilled && i - 0.5 === currentRating;
       
       stars.push(
         <div
           key={i}
-          className="relative cursor-pointer"
-          onMouseEnter={() => setHoverRating(i)}
-          onMouseLeave={() => setHoverRating(0)}
+          className="relative cursor-pointer group"
         >
-          {/* Left half */}
+          {/* Metade esquerda - para meia estrela */}
           <div
-            className="absolute inset-0 w-1/2 z-10"
+            className="absolute inset-0 w-1/2 z-20"
+            onMouseEnter={() => setHoverRating(i - 0.5)}
             onClick={() => handleStarClick(i - 0.5)}
           />
-          {/* Right half */}
+          {/* Metade direita - para estrela completa */}
           <div
-            className="absolute inset-0 left-1/2 w-1/2 z-10"
+            className="absolute inset-0 left-1/2 w-1/2 z-20"
+            onMouseEnter={() => setHoverRating(i)}
             onClick={() => handleStarClick(i)}
           />
           
+          {/* Estrela de fundo (sempre visível, vazia) */}
           <Star
-            className={`h-10 w-10 ${
-              isFilled ? 'fill-yellow-400 text-yellow-400' : 
-              isHalf ? 'fill-yellow-400 text-muted' :
-              'text-muted'
-            }`}
-            style={isHalf ? { clipPath: 'polygon(0 0, 50% 0, 50% 100%, 0 100%)' } : undefined}
+            className="h-10 w-10 text-gray-300 fill-none"
           />
-          {isHalf && (
-            <Star className="absolute top-0 left-0 h-10 w-10 text-muted" />
+          
+          {/* Estrela preenchida (quando necessário) */}
+          {(isFilled || isHalf) && (
+            <Star
+              className={`absolute top-0 left-0 h-10 w-10 fill-yellow-400 text-yellow-400 ${
+                isHalf ? 'clip-path-half' : ''
+              }`}
+              style={isHalf ? { clipPath: 'polygon(0 0, 50% 0, 50% 100%, 0 100%)' } : undefined}
+            />
           )}
         </div>
       );
@@ -176,7 +181,10 @@ export const CityReviewModal = ({
           <div className="space-y-3">
             <label className="text-sm font-semibold">Sua avaliação</label>
             <div className="flex items-center gap-3">
-              <div className="flex gap-1">
+              <div 
+                className="flex gap-1"
+                onMouseLeave={() => setHoverRating(0)}
+              >
                 {renderStars()}
               </div>
               {rating > 0 && (

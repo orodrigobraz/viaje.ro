@@ -9,7 +9,7 @@ import { getCityData } from '@/data/getCityData';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useCityReviews } from '@/hooks/useCityReviews';
 
-// Types for GeoJSON
+// Tipos para GeoJSON
 type GeoJSONPolygon = {
   type: "Polygon";
   coordinates: number[][][];
@@ -26,7 +26,7 @@ type GeoJSONFeature = {
   geometry: GeoJSONPolygon | GeoJSONMultiPolygon;
 };
 
-// Fix for default markers in Leaflet
+// Correção para marcadores padrão do Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -62,7 +62,7 @@ export const MapView = ({ cities }: MapViewProps) => {
   const loadedCitiesRef = useRef<Set<string>>(new Set());
   const isLoadingRef = useRef(false);
 
-  // Initialize map once
+  // Inicializar mapa uma vez
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
@@ -82,7 +82,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     };
   }, []);
 
-  // Helper function to create popup content
+  // Função auxiliar para criar conteúdo do popup
   const createPopupContent = (cityName: string, stateName: string, review: any, idSuffix: string = '') => {
     const popupContent = document.createElement('div');
     popupContent.className = 'p-3 min-w-[200px]';
@@ -107,7 +107,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     return popupContent;
   };
 
-  // Helper function to setup popup events
+  // Função auxiliar para configurar eventos do popup
   const setupPopupEvents = (cityName: string, cityData: any, idSuffix: string = '') => {
     setTimeout(() => {
       const btnInfo = document.getElementById(`btn-info-${cityName.replace(/\s/g, '-')}${idSuffix}`);
@@ -131,7 +131,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     }, 100);
   };
 
-  // Helper to add city layer with cover photo support using SVG overlay
+  // Função auxiliar para adicionar camada da cidade com suporte a foto de capa usando sobreposição SVG
   const addCityLayerWithCover = async (
     feature: GeoJSONFeature, 
     stateColor: string, 
@@ -143,34 +143,97 @@ export const MapView = ({ cities }: MapViewProps) => {
 
     if (coverPhoto && review) {
       try {
-        // Get the bounds of the polygon
+        // Obter os limites do polígono
         const bounds = L.geoJSON(feature).getBounds();
         
-        // Calculate positioning based on saved position
+        // Calcular posicionamento com base na posição salva
         const posX = review.cover_photo_position_x || 0.5;
         const posY = review.cover_photo_position_y || 0.5;
         const scale = review.cover_photo_scale || 1.0;
         
-        // Get polygon coordinates
-        const coords = feature.geometry.type === 'Polygon' 
-          ? feature.geometry.coordinates[0]
-          : feature.geometry.coordinates[0][0];
-        
-        // Calculate image position and size
+        // Processar todos os polígonos (incluindo MultiPolygon com ilhas)
         const boundsWidth = bounds.getEast() - bounds.getWest();
         const boundsHeight = bounds.getNorth() - bounds.getSouth();
-        const imageWidth = boundsWidth * scale;
-        const imageHeight = boundsHeight * scale;
+        const boundsNorth = bounds.getNorth();
+        const boundsSouth = bounds.getSouth();
+        
+        // Coletar todos os polígonos para o clipPath
+        const allPolygons: string[] = [];
+        
+        if (feature.geometry.type === 'Polygon') {
+          const polygonCoords = feature.geometry.coordinates as number[][][];
+          polygonCoords.forEach((ring) => {
+            const points = ring.map((c: number[]) => 
+              `${c[0]},${boundsNorth - (c[1] - boundsSouth)}`
+            ).join(' ');
+            allPolygons.push(`<polygon points="${points}" />`);
+          });
+        } else if (feature.geometry.type === 'MultiPolygon') {
+          const multiPolygonCoords = feature.geometry.coordinates as number[][][][];
+          multiPolygonCoords.forEach((polygon: number[][][]) => {
+            polygon.forEach((ring) => {
+              const points = ring.map((c: number[]) => 
+                `${c[0]},${boundsNorth - (c[1] - boundsSouth)}`
+              ).join(' ');
+              allPolygons.push(`<polygon points="${points}" />`);
+            });
+          });
+        }
+        
+        // Carregar imagem para obter dimensões reais
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Timeout ao carregar imagem'));
+            }, 10000); // 10 segundos de timeout
+            
+            img.onload = () => {
+              clearTimeout(timeout);
+              resolve();
+            };
+            img.onerror = () => {
+              clearTimeout(timeout);
+              reject(new Error('Erro ao carregar imagem'));
+            };
+            img.src = coverPhoto.photo_url;
+          });
+        } catch (error) {
+          console.error('Erro ao carregar imagem de capa:', error);
+          // Se falhar ao carregar imagem, usar camada padrão
+          addStandardCityLayer(feature, stateColor, cityData, review);
+          return;
+        }
+        
+        // Calcular dimensões da imagem mantendo proporção
+        const imageAspectRatio = img.width / img.height;
+        const boundsAspectRatio = boundsWidth / boundsHeight;
+        
+        let imageWidth: number;
+        let imageHeight: number;
+        
+        if (imageAspectRatio > boundsAspectRatio) {
+          // Imagem é mais larga - ajustar pela largura
+          imageWidth = boundsWidth * scale;
+          imageHeight = imageWidth / imageAspectRatio;
+        } else {
+          // Imagem é mais alta - ajustar pela altura
+          imageHeight = boundsHeight * scale;
+          imageWidth = imageHeight * imageAspectRatio;
+        }
+        
         const imageX = bounds.getWest() + (posX * boundsWidth) - (imageWidth / 2);
         const imageY = bounds.getSouth() + (posY * boundsHeight) - (imageHeight / 2);
         
-        // Create SVG overlay with clip path
+        // Criar sobreposição SVG com caminho de recorte
         const uniqueId = feature.properties.CD_MUN || Math.random().toString().replace('.', '');
         const svgOverlay = L.svgOverlay(
           `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bounds.getWest()} ${bounds.getSouth()} ${boundsWidth} ${boundsHeight}">
             <defs>
               <clipPath id="clip-${uniqueId}">
-                <polygon points="${coords.map((c: number[]) => `${c[0]},${bounds.getNorth() - (c[1] - bounds.getSouth())}`).join(' ')}" />
+                ${allPolygons.join('')}
               </clipPath>
             </defs>
             <g clip-path="url(#clip-${uniqueId})">
@@ -179,7 +242,7 @@ export const MapView = ({ cities }: MapViewProps) => {
                      y="${imageY}" 
                      width="${imageWidth}" 
                      height="${imageHeight}" 
-                     preserveAspectRatio="xMidYMid slice" />
+                     preserveAspectRatio="none" />
             </g>
           </svg>`,
           bounds,
@@ -192,10 +255,10 @@ export const MapView = ({ cities }: MapViewProps) => {
         svgOverlay.addTo(mapInstanceRef.current);
         layersRef.current.push(svgOverlay);
         
-        // Add popup to the SVG overlay (we'll make it interactive)
+        // Adicionar popup à sobreposição SVG (vamos torná-la interativa)
         const popupContent = createPopupContent(feature.properties.nome, feature.properties.estado, review);
         
-        // Create an outline layer for popup interaction and visible border
+        // Criar camada de contorno para interação do popup e borda visível
         const outlineLayer = L.geoJSON(feature, {
           style: {
             color: stateColor,
@@ -222,12 +285,12 @@ export const MapView = ({ cities }: MapViewProps) => {
         addStandardCityLayer(feature, stateColor, cityData, review);
       }
     } else {
-      // No cover photo, use standard layer
+      // Sem foto de capa, usar camada padrão
       addStandardCityLayer(feature, stateColor, cityData, review);
     }
   };
 
-  // Helper to add standard city layer without cover photo
+  // Função auxiliar para adicionar camada padrão da cidade sem foto de capa
   const addStandardCityLayer = (feature: GeoJSONFeature, stateColor: string, cityData: any, review: any) => {
     if (!mapInstanceRef.current) return;
 
@@ -255,7 +318,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     layersRef.current.push(layer);
   };
 
-  // Update cities
+  // Atualizar cidades
   useEffect(() => {
     if (!mapInstanceRef.current || isLoadingRef.current) return;
 
@@ -266,7 +329,7 @@ export const MapView = ({ cities }: MapViewProps) => {
 
     isLoadingRef.current = true;
 
-    // Clear existing layers
+    // Limpar camadas existentes
     layersRef.current.forEach(layer => {
       mapInstanceRef.current?.removeLayer(layer);
     });
@@ -343,7 +406,7 @@ export const MapView = ({ cities }: MapViewProps) => {
       } catch (error) {
         console.error('Erro ao processar polígonos das cidades:', error);
         
-        // Fallback rendering
+        // Renderização de fallback
         cities.forEach(city => {
           if (city.geometry && mapInstanceRef.current) {
             try {
@@ -415,13 +478,13 @@ export const MapView = ({ cities }: MapViewProps) => {
     );
     
     if (success) {
-      // Update cover position if review exists
+      // Atualizar posição da capa se a avaliação existir
       const updatedReview = getReview(selectedCity.nome, selectedCity.estado);
       if (updatedReview) {
         await updateCoverPosition(selectedCity.nome, selectedCity.estado, coverPosition);
       }
       
-      // Force map reload by clearing loaded cities
+      // Forçar recarregamento do mapa limpando cidades carregadas
       loadedCitiesRef.current.clear();
     }
     

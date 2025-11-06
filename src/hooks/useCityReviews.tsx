@@ -54,7 +54,7 @@ export const useCityReviews = () => {
       });
       setReviews(reviewsMap);
 
-      // Load photos for all reviews
+      // Carregar fotos de todas as avaliações
       if (reviewsData && reviewsData.length > 0) {
         const reviewIds = reviewsData.map((r) => r.id);
         const { data: photosData, error: photosError } = await supabase
@@ -115,7 +115,7 @@ export const useCityReviews = () => {
     if (!user) return false;
 
     try {
-      // Get city_code from municipios table
+      // Obter city_code da tabela municipios
       const { data: municipioData } = await supabase
         .from('municipios')
         .select('cd_mun')
@@ -126,7 +126,7 @@ export const useCityReviews = () => {
       
       const cityCode = municipioData?.cd_mun || null;
 
-      // Upsert review
+      // Criar ou atualizar avaliação
       const { data: reviewData, error: reviewError } = await supabase
         .from('city_reviews')
         .upsert({
@@ -148,7 +148,7 @@ export const useCityReviews = () => {
 
       if (reviewError) throw reviewError;
 
-      // Upload photos
+      // Fazer upload das fotos
       if (photoFiles.length > 0) {
         const newPhotoIds: string[] = [];
         
@@ -172,7 +172,7 @@ export const useCityReviews = () => {
             .insert({
               review_id: reviewData.id,
               photo_url: publicUrl,
-              is_cover: false, // We'll set cover after all photos are inserted
+              is_cover: false, // Vamos definir a capa depois que todas as fotos forem inseridas
             })
             .select()
             .single();
@@ -183,15 +183,15 @@ export const useCityReviews = () => {
           }
         }
         
-        // If a new photo was set as cover, remove cover from all other photos and set the new one
+        // Se uma nova foto foi definida como capa, remover capa de todas as outras fotos e definir a nova
         if (coverPhotoIndex !== null && coverPhotoIndex >= 0 && coverPhotoIndex < newPhotoIds.length) {
-          // Remove cover from all photos of this review
+          // Remover capa de todas as fotos desta avaliação
           await supabase
             .from('city_review_photos')
             .update({ is_cover: false } as any)
             .eq('review_id', reviewData.id);
           
-          // Set the new photo as cover
+          // Definir a nova foto como capa
           await supabase
             .from('city_review_photos')
             .update({ is_cover: true } as any)
@@ -223,7 +223,7 @@ export const useCityReviews = () => {
       const review = getReview(cityName, stateName);
       if (!review) return false;
 
-      // Delete photos from storage
+      // Excluir fotos do armazenamento
       const reviewPhotos = getReviewPhotos(review.id);
       for (const photo of reviewPhotos) {
         const path = photo.photo_url.split('/city-review-photos/')[1];
@@ -291,7 +291,7 @@ export const useCityReviews = () => {
 
   const setCoverPhoto = async (photoId: string, reviewId: string): Promise<boolean> => {
     try {
-      // Remove cover from all photos of this review
+      // Remover capa de todas as fotos desta avaliação
       const { error: removeError } = await supabase
         .from('city_review_photos')
         .update({ is_cover: false } as any)
@@ -299,7 +299,7 @@ export const useCityReviews = () => {
 
       if (removeError) throw removeError;
 
-      // Set new cover photo
+      // Definir nova foto de capa
       const { error: setCoverError } = await supabase
         .from('city_review_photos')
         .update({ is_cover: true } as any)
