@@ -324,6 +324,33 @@ export const useCityReviews = () => {
     }
   };
 
+  const removeCoverPhoto = async (reviewId: string): Promise<boolean> => {
+    try {
+      // Remover capa de todas as fotos desta avaliação
+      const { error: removeError } = await supabase
+        .from('city_review_photos')
+        .update({ is_cover: false } as any)
+        .eq('review_id', reviewId);
+
+      if (removeError) throw removeError;
+
+      await loadReviews();
+      toast({
+        title: 'Sucesso',
+        description: 'Foto de capa removida!',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error removing cover photo:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível remover a foto de capa.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   const updateCoverPosition = async (
     cityName: string,
     stateName: string,
@@ -369,6 +396,7 @@ export const useCityReviews = () => {
     deleteReview,
     deletePhoto,
     setCoverPhoto,
+    removeCoverPhoto,
     updateCoverPosition,
     loadReviews,
   };

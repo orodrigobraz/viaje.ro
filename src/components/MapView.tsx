@@ -58,7 +58,7 @@ export const MapView = ({ cities }: MapViewProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const { stateColors } = useSettings();
-  const { getReview, getReviewPhotos, saveReview, deleteReview, deletePhoto, setCoverPhoto, updateCoverPosition, reviews, photos } = useCityReviews();
+  const { getReview, getReviewPhotos, saveReview, deleteReview, deletePhoto, setCoverPhoto, removeCoverPhoto, updateCoverPosition, reviews, photos } = useCityReviews();
   const loadedCitiesRef = useRef<Set<string>>(new Set());
   const isLoadingRef = useRef(false);
 
@@ -496,6 +496,8 @@ export const MapView = ({ cities }: MapViewProps) => {
     return await deleteReview(selectedCity.nome, selectedCity.estado);
   };
 
+  // Recalcular currentReview e currentPhotos quando reviews ou photos mudarem
+  // Usar useMemo para garantir que seja recalculado quando os dados mudarem
   const currentReview = selectedCity ? getReview(selectedCity.nome, selectedCity.estado) : undefined;
   const currentPhotos = currentReview ? getReviewPhotos(currentReview.id) : [];
 
@@ -522,6 +524,9 @@ export const MapView = ({ cities }: MapViewProps) => {
             onDelete={currentReview ? handleDeleteReview : undefined}
             onDeletePhoto={deletePhoto}
             onSetCoverPhoto={setCoverPhoto}
+            onRemoveCoverPhoto={currentReview ? async () => {
+              await removeCoverPhoto(currentReview.id);
+            } : undefined}
           />
         </>
       )}

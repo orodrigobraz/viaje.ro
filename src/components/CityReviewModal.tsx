@@ -20,6 +20,7 @@ interface CityReviewModalProps {
   onDelete?: () => Promise<boolean>;
   onDeletePhoto?: (photoId: string, photoUrl: string) => Promise<boolean>;
   onSetCoverPhoto?: (photoId: string, reviewId: string) => Promise<boolean>;
+  onRemoveCoverPhoto?: (reviewId: string) => Promise<boolean>;
 }
 
 export const CityReviewModal = ({
@@ -33,6 +34,7 @@ export const CityReviewModal = ({
   onDelete,
   onDeletePhoto,
   onSetCoverPhoto,
+  onRemoveCoverPhoto,
 }: CityReviewModalProps) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -61,7 +63,7 @@ export const CityReviewModal = ({
     setPhotoFiles([]);
     setPhotoPreviewUrls([]);
     setCoverPhotoIndex(null);
-  }, [existingReview, isOpen]);
+  }, [existingReview, existingPhotos, isOpen]);
 
   const handleStarClick = (value: number) => {
     setRating(value);
@@ -224,39 +226,67 @@ export const CityReviewModal = ({
                     <img
                       src={photo.photo_url}
                       alt="Foto da cidade"
-                      className={`w-full h-full object-cover rounded-lg border-2 ${
-                        photo.is_cover === true ? 'border-primary' : 'border-border'
-                      }`}
+                    className={`w-full h-full object-cover rounded-lg border-2 ${
+                      Boolean(photo.is_cover) ? 'border-primary' : 'border-border'
+                    }`}
                     />
-                    {photo.is_cover === true && (
+                    {Boolean(photo.is_cover) && (
                       <Badge className="absolute top-1.5 left-1.5 bg-primary text-primary-foreground">
                         <ImageIcon className="h-3 w-3 mr-1" />
                         Capa
                       </Badge>
                     )}
+                    {/* Botão de excluir no canto superior direito - aparece para todas as fotos */}
+                    {onDeletePhoto && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1.5 right-1.5 h-7 w-7 min-w-[28px] shadow-lg flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        onClick={() => onDeletePhoto(photo.id, photo.photo_url)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {/* Botões de capa na parte inferior - só aparecem no hover */}
                     <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {photo.is_cover !== true && onSetCoverPhoto && existingReview && (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          className="flex-1 h-7 text-xs"
-                          onClick={() => onSetCoverPhoto(photo.id, existingReview.id)}
-                        >
-                          <ImageIcon className="h-3 w-3 mr-1" />
-                          Capa
-                        </Button>
-                      )}
-                      {onDeletePhoto && (
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="h-7 w-7 shadow-lg"
-                          onClick={() => onDeletePhoto(photo.id, photo.photo_url)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                      {photo.is_cover === true ? (
+                        // Se é foto de capa, mostrar apenas "Remover capa"
+                        onRemoveCoverPhoto && existingReview ? (
+                          <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={async () => {
+                              if (onRemoveCoverPhoto && existingReview) {
+                                const success = await onRemoveCoverPhoto(existingReview.id);
+                                if (success) {
+                                  // Forçar atualização do componente
+                                  // O loadReviews() já foi chamado dentro de removeCoverPhoto
+                                  // O componente será atualizado automaticamente quando existingPhotos mudar
+                                }
+                              }
+                            }}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Remover capa
+                          </Button>
+                        ) : null
+                      ) : (
+                        // Se não é foto de capa, mostrar apenas "Definir como capa"
+                        onSetCoverPhoto && existingReview ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="flex-1 h-7 text-xs"
+                            onClick={() => onSetCoverPhoto(photo.id, existingReview.id)}
+                          >
+                            <ImageIcon className="h-3 w-3 mr-1" />
+                            Definir como capa
+                          </Button>
+                        ) : null
                       )}
                     </div>
                   </div>
@@ -277,26 +307,43 @@ export const CityReviewModal = ({
                         Capa
                       </Badge>
                     )}
+                    {/* Botão de excluir no canto superior direito - aparece para todas as fotos */}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1.5 right-1.5 h-7 w-7 min-w-[28px] shadow-lg flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      onClick={() => handleRemoveNewPhoto(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                    {/* Botões de capa na parte inferior - só aparecem no hover */}
                     <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        type="button"
-                        variant={coverPhotoIndex === index ? 'default' : 'secondary'}
-                        size="sm"
-                        className="flex-1 h-7 text-xs"
-                        onClick={() => setCoverPhotoIndex(coverPhotoIndex === index ? null : index)}
-                      >
-                        <ImageIcon className="h-3 w-3 mr-1" />
-                        {coverPhotoIndex === index ? 'É Capa' : 'Definir Capa'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="h-7 w-7 shadow-lg"
-                        onClick={() => handleRemoveNewPhoto(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      {coverPhotoIndex === index ? (
+                        // Se é foto de capa, mostrar apenas "Remover capa"
+                        <Button
+                          type="button"
+                          variant="default"
+                          size="sm"
+                          className="flex-1 h-7 text-xs"
+                          onClick={() => setCoverPhotoIndex(null)}
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Remover capa
+                        </Button>
+                      ) : (
+                        // Se não é foto de capa, mostrar apenas "Definir como capa"
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1 h-7 text-xs"
+                          onClick={() => setCoverPhotoIndex(index)}
+                        >
+                          <ImageIcon className="h-3 w-3 mr-1" />
+                          Definir como capa
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -326,10 +373,16 @@ export const CityReviewModal = ({
             )}
           </div>
 
-          {/* Cover Photo Adjuster */}
+          {/* Cover Photo Adjuster - só aparece se houver foto de capa */}
           {(() => {
-            const coverPhoto = existingPhotos.find(p => p.is_cover === true) || 
-              (coverPhotoIndex !== null && photoPreviewUrls[coverPhotoIndex] ? { photo_url: photoPreviewUrls[coverPhotoIndex] } : null);
+            // Verificar se há foto de capa nas fotos existentes
+            const existingCoverPhoto = existingPhotos.find(p => Boolean(p.is_cover));
+            // Verificar se há foto de capa nas fotos preview
+            const previewCoverPhoto = coverPhotoIndex !== null && photoPreviewUrls[coverPhotoIndex] 
+              ? { photo_url: photoPreviewUrls[coverPhotoIndex] } 
+              : null;
+            
+            const coverPhoto = existingCoverPhoto || previewCoverPhoto;
             
             return coverPhoto ? (
               <div className="space-y-3 pt-4 border-t">
