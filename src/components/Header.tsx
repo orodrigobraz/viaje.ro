@@ -1,13 +1,19 @@
-import { Compass, LogOut, User } from 'lucide-react';
+import { Compass, LogOut, User, Settings, MapPin } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
+import { AccountSettingsModal } from './AccountSettingsModal';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/hooks/useAuth';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useProfile } from '@/hooks/useProfile';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 export const Header = () => {
   const { user, signOut } = useAuth();
-  const isMobile = useIsMobile();
+  const { profile } = useProfile();
+  const [mapSettingsOpen, setMapSettingsOpen] = useState(false);
+  const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -17,6 +23,8 @@ export const Header = () => {
       toast.error('Erro ao fazer logout');
     }
   };
+
+  const displayName = profile?.display_name || user?.email?.split('@')[0] || 'Usuário';
 
   return (
     <header className="bg-card border-b border-border shadow-sm">
@@ -30,32 +38,70 @@ export const Header = () => {
               <h1 className="text-2xl font-bold text-foreground bg-gradient-to-r from-primary to-teal bg-clip-text text-transparent">
                 Viaje.ro
               </h1>
-              {!isMobile && (
-                <p className="text-sm text-muted-foreground">
-                  Descubra e registre suas aventuras pelo Brasil
-                </p>
-              )}
+              <p className="text-sm text-muted-foreground">
+                Descubra e registre suas aventuras pelo Brasil
+              </p>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
             {user && (
-              <div className="flex items-center gap-3 text-sm">
-                <User className="h-4 w-4" />
-                <span className="text-muted-foreground">{user.email}</span>
+              <>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={profile?.avatar_url || undefined} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {displayName[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium text-foreground hidden sm:inline">
+                    {displayName}
+                  </span>
+                </div>
+                
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleSignOut}
-                  className="flex items-center gap-2 border-border hover:bg-accent"
+                  className="flex items-center gap-2"
                 >
                   <LogOut className="h-4 w-4" />
-                  Sair
+                  <span className="hidden sm:inline">Sair</span>
                 </Button>
-              </div>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-2" align="end">
+                    <div className="space-y-1">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-2"
+                        onClick={() => setMapSettingsOpen(true)}
+                      >
+                        <MapPin className="h-4 w-4" />
+                        Configurações do Mapa
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-2"
+                        onClick={() => setAccountSettingsOpen(true)}
+                      >
+                        <User className="h-4 w-4" />
+                        Configurações da Conta
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </>
             )}
-            <SettingsModal />
           </div>
+          
+          <SettingsModal open={mapSettingsOpen} onOpenChange={setMapSettingsOpen} />
+          <AccountSettingsModal open={accountSettingsOpen} onOpenChange={setAccountSettingsOpen} />
         </div>
       </div>
     </header>
