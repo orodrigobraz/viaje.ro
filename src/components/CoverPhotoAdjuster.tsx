@@ -23,7 +23,7 @@ export const CoverPhotoAdjuster = ({
   const [geometry, setGeometry] = useState<GeoJSONFeature | null>(null);
   const [svgPaths, setSvgPaths] = useState<string[]>([]);
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
-  const [imageAspectRatio, setImageAspectRatio] = useState<number>(1);
+  const [viewBox, setViewBox] = useState<string>('0 0 100 100');
   const containerRef = useRef<HTMLDivElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
 
@@ -60,11 +60,21 @@ export const CoverPhotoAdjuster = ({
           const lngSpan = maxLng - minLng;
           const latSpan = maxLat - minLat;
           
-          // Calcular proporção correta da geometria (com limites para evitar extremos)
+          // Calcular proporção correta da geometria para manter proporções
           const calculatedAspectRatio = lngSpan / latSpan;
           // Limitar entre 0.5 e 3.0 para manter o container em tamanho razoável
           const clampedAspectRatio = Math.max(0.5, Math.min(3.0, calculatedAspectRatio));
           setAspectRatio(clampedAspectRatio);
+          
+          // Calcular viewBox baseado no aspect ratio
+          const viewBoxWidth = 100;
+          const viewBoxHeight = 100 / clampedAspectRatio;
+          setViewBox(`0 0 ${viewBoxWidth} ${viewBoxHeight}`);
+          
+          // Fator de escala para "zoom out" - fazer o polígono aparecer menor (85% do tamanho)
+          const zoomOutScale = 0.85;
+          const paddingX = (1 - zoomOutScale) / 2;
+          const paddingY = (1 - zoomOutScale) / 2;
           
           // Processar todos os polígonos (para MultiPolygon, inclui continente e ilhas)
           const paths: string[] = [];
@@ -73,8 +83,12 @@ export const CoverPhotoAdjuster = ({
             // Processar o polígono externo
             const polygonCoords = geoData.geometry.coordinates as number[][][];
             const pathData = polygonCoords[0].map((coord, i) => {
-              const x = ((coord[0] - minLng) / lngSpan) * 100;
-              const y = ((maxLat - coord[1]) / latSpan) * 100;
+              // Normalizar para 0-1 primeiro
+              const normalizedX = (coord[0] - minLng) / lngSpan;
+              const normalizedY = (maxLat - coord[1]) / latSpan;
+              // Aplicar escala e padding (zoom out) no sistema de coordenadas do viewBox
+              const x = (paddingX + normalizedX * zoomOutScale) * viewBoxWidth;
+              const y = (paddingY + normalizedY * zoomOutScale) * viewBoxHeight;
               return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
             }).join(' ') + ' Z';
             paths.push(pathData);
@@ -82,8 +96,10 @@ export const CoverPhotoAdjuster = ({
             // Processar buracos (holes) se existirem
             for (let i = 1; i < polygonCoords.length; i++) {
               const holePath = polygonCoords[i].map((coord, j) => {
-                const x = ((coord[0] - minLng) / lngSpan) * 100;
-                const y = ((maxLat - coord[1]) / latSpan) * 100;
+                const normalizedX = (coord[0] - minLng) / lngSpan;
+                const normalizedY = (maxLat - coord[1]) / latSpan;
+                const x = (paddingX + normalizedX * zoomOutScale) * viewBoxWidth;
+                const y = (paddingY + normalizedY * zoomOutScale) * viewBoxHeight;
                 return `${j === 0 ? 'M' : 'L'} ${x} ${y}`;
               }).join(' ') + ' Z';
               paths.push(holePath);
@@ -94,8 +110,10 @@ export const CoverPhotoAdjuster = ({
             multiPolygonCoords.forEach((polygon: number[][][]) => {
               // Polígono externo
               const pathData = polygon[0].map((coord, i) => {
-                const x = ((coord[0] - minLng) / lngSpan) * 100;
-                const y = ((maxLat - coord[1]) / latSpan) * 100;
+                const normalizedX = (coord[0] - minLng) / lngSpan;
+                const normalizedY = (maxLat - coord[1]) / latSpan;
+                const x = (paddingX + normalizedX * zoomOutScale) * viewBoxWidth;
+                const y = (paddingY + normalizedY * zoomOutScale) * viewBoxHeight;
                 return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
               }).join(' ') + ' Z';
               paths.push(pathData);
@@ -103,8 +121,10 @@ export const CoverPhotoAdjuster = ({
               // Buracos (holes) se existirem
               for (let i = 1; i < polygon.length; i++) {
                 const holePath = polygon[i].map((coord, j) => {
-                  const x = ((coord[0] - minLng) / lngSpan) * 100;
-                  const y = ((maxLat - coord[1]) / latSpan) * 100;
+                  const normalizedX = (coord[0] - minLng) / lngSpan;
+                  const normalizedY = (maxLat - coord[1]) / latSpan;
+                  const x = (paddingX + normalizedX * zoomOutScale) * viewBoxWidth;
+                  const y = (paddingY + normalizedY * zoomOutScale) * viewBoxHeight;
                   return `${j === 0 ? 'M' : 'L'} ${x} ${y}`;
                 }).join(' ') + ' Z';
                 paths.push(holePath);
@@ -120,15 +140,6 @@ export const CoverPhotoAdjuster = ({
     loadGeometry();
   }, [cityName, stateName]);
 
-  // Carregar dimensões reais da imagem
-  useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      const imgAspectRatio = img.width / img.height;
-      setImageAspectRatio(imgAspectRatio);
-    };
-    img.src = photoUrl;
-  }, [photoUrl]);
 
   // Atualizar posição quando initialPosition mudar
   useEffect(() => {
@@ -143,25 +154,17 @@ export const CoverPhotoAdjuster = ({
     setIsDragging(true);
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-
-    const relativeX = (e.clientX - rect.left) / rect.width;
-    const relativeY = (e.clientY - rect.top) / rect.height;
     startPosRef.current = {
-      x: relativeX - position.x,
-      y: relativeY - position.y,
+      x: e.clientX - position.x * rect.width,
+      y: e.clientY - position.y * rect.height,
     };
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
-
     const rect = containerRef.current.getBoundingClientRect();
-    const relativeX = (e.clientX - rect.left) / rect.width;
-    const relativeY = (e.clientY - rect.top) / rect.height;
-    
-    const x = Math.max(0, Math.min(1, relativeX - startPosRef.current.x));
-    const y = Math.max(0, Math.min(1, relativeY - startPosRef.current.y));
-
+    const x = Math.max(0, Math.min(1, (e.clientX - startPosRef.current.x) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - startPosRef.current.y) / rect.height));
     setPosition((prev) => ({ ...prev, x, y }));
   };
 
@@ -183,8 +186,13 @@ export const CoverPhotoAdjuster = ({
       {/* Preview Container */}
       <div
         ref={containerRef}
-        className="relative w-full bg-muted rounded-lg overflow-hidden border-2 border-border cursor-move"
-        style={{ aspectRatio: aspectRatio }}
+        className="relative w-full bg-white rounded-lg overflow-hidden border-2 border-border cursor-move"
+        style={{ 
+          aspectRatio: aspectRatio,
+          maxHeight: '400px',
+          maxWidth: '100%',
+          height: 'auto'
+        }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -193,50 +201,50 @@ export const CoverPhotoAdjuster = ({
         {svgPaths.length > 0 ? (
           <svg
             className="absolute inset-0 w-full h-full"
-            viewBox="0 0 100 100"
+            viewBox={viewBox}
             preserveAspectRatio="xMidYMid meet"
+            style={{ display: 'block', background: 'transparent' }}
           >
             <defs>
-              <clipPath id="city-clip">
-                {svgPaths.map((path, index) => (
-                  <path key={index} d={path} />
-                ))}
-              </clipPath>
+              <pattern
+                id={`photo-pattern-${cityName.replace(/\s+/g, '-')}-${stateName.replace(/\s+/g, '-')}`}
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                patternUnits="userSpaceOnUse"
+                patternContentUnits="userSpaceOnUse"
+              >
+                {(() => {
+                  const viewBoxWidth = 100;
+                  const viewBoxHeight = 100 / aspectRatio;
+                  // Corrigir: quando scale aumenta, a imagem deve aumentar (multiplicar, não dividir)
+                  const imageSize = 100 * position.scale;
+                  const imageX = position.x * viewBoxWidth - (imageSize / 2);
+                  const imageY = position.y * viewBoxHeight - (imageSize / 2);
+                  
+                  return (
+                    <image
+                      href={photoUrl}
+                      x={imageX}
+                      y={imageY}
+                      width={imageSize}
+                      height={imageSize}
+                      preserveAspectRatio="xMidYMid slice"
+                    />
+                  );
+                })()}
+              </pattern>
             </defs>
             
-            {/* Foto recortada no formato da cidade */}
-            <g clipPath="url(#city-clip)">
-              {(() => {
-                // Calcular dimensões mantendo proporção real da imagem
-                const containerAspectRatio = aspectRatio;
-                let imgWidth: number;
-                let imgHeight: number;
-                
-                if (imageAspectRatio > containerAspectRatio) {
-                  // Imagem é mais larga - ajustar pela largura
-                  imgWidth = 100 * position.scale;
-                  imgHeight = imgWidth / imageAspectRatio;
-                } else {
-                  // Imagem é mais alta - ajustar pela altura
-                  imgHeight = 100 * position.scale;
-                  imgWidth = imgHeight * imageAspectRatio;
-                }
-                
-                const imgX = position.x * 100 - (imgWidth / 2);
-                const imgY = position.y * 100 - (imgHeight / 2);
-                
-                return (
-                  <image
-                    href={photoUrl}
-                    x={imgX}
-                    y={imgY}
-                    width={imgWidth}
-                    height={imgHeight}
-                    preserveAspectRatio="none"
-                  />
-                );
-              })()}
-            </g>
+            {/* Foto preenchendo o polígono da cidade usando pattern */}
+            {svgPaths.map((path, index) => (
+              <path
+                key={index}
+                d={path}
+                fill={`url(#photo-pattern-${cityName.replace(/\s+/g, '-')}-${stateName.replace(/\s+/g, '-')})`}
+              />
+            ))}
             
             {/* Contorno da cidade (todos os polígonos) */}
             {svgPaths.map((path, index) => (
@@ -247,6 +255,7 @@ export const CoverPhotoAdjuster = ({
                 stroke="currentColor"
                 strokeWidth="0.5"
                 className="text-primary"
+                style={{ pointerEvents: 'none' }}
               />
             ))}
           </svg>
@@ -278,8 +287,8 @@ export const CoverPhotoAdjuster = ({
         <Slider
           value={[position.scale]}
           onValueChange={handleScaleChange}
-          min={0.5}
-          max={3}
+          min={1}
+          max={5}
           step={0.1}
           className="w-full"
         />
