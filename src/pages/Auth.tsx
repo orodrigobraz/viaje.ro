@@ -78,16 +78,13 @@ const Auth = () => {
             return;
           }
         }
-        // Usar URL do GitHub Pages em produção, localhost em desenvolvimento
-        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-        const redirectUrl = isProduction 
-          ? 'https://orodrigobraz.github.io/viaje.ro/'
-          : `${window.location.origin}/viaje.ro/`;
+        // Sempre usar GitHub Pages para email confirmation URL
+        const emailRedirectUrl = 'https://orodrigobraz.github.io/viaje.ro/';
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: redirectUrl,
+            emailRedirectTo: emailRedirectUrl,
             data: {
               name: displayName
             }
@@ -129,11 +126,8 @@ const Auth = () => {
 
   const handleGoogleAuth = async () => {
     try {
-      // Usar URL do GitHub Pages em produção, localhost em desenvolvimento
-      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-      const redirectUrl = isProduction 
-        ? 'https://orodrigobraz.github.io/viaje.ro/'
-        : `${window.location.origin}/viaje.ro/`;
+      // Sempre usar GitHub Pages para email confirmation URL
+      const redirectUrl = 'https://orodrigobraz.github.io/viaje.ro/';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

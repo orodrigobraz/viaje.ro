@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { ZoomIn, ZoomOut, Move } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { findMunicipalityGeometry, GeoJSONFeature } from '@/utils/geoJsonLoader';
 
 interface CoverPhotoAdjusterProps {
@@ -187,6 +188,20 @@ export const CoverPhotoAdjuster = ({
     setPosition((prev) => ({ ...prev, scale: value[0] }));
   };
 
+  const handleZoomOut = () => {
+    setPosition((prev) => ({
+      ...prev,
+      scale: Math.max(0.1, prev.scale - 0.1)
+    }));
+  };
+
+  const handleZoomIn = () => {
+    setPosition((prev) => ({
+      ...prev,
+      scale: Math.min(10, prev.scale + 0.1)
+    }));
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm font-medium">
@@ -291,18 +306,34 @@ export const CoverPhotoAdjuster = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
-            <ZoomOut className="h-4 w-4 text-muted-foreground" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleZoomOut}
+              className="h-8 w-8 p-0"
+              title="Diminuir zoom"
+            >
+              <ZoomOut className="h-4 w-4 text-muted-foreground" />
+            </Button>
             <span className="text-muted-foreground">Zoom</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-medium">{position.scale.toFixed(1)}x</span>
-            <ZoomIn className="h-4 w-4 text-muted-foreground" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleZoomIn}
+              className="h-8 w-8 p-0"
+              title="Aumentar zoom"
+            >
+              <ZoomIn className="h-4 w-4 text-muted-foreground" />
+            </Button>
           </div>
         </div>
         <Slider
           value={[position.scale]}
           onValueChange={handleScaleChange}
-          min={0.5}
+          min={0.1}
           max={10}
           step={0.1}
           className="w-full"
