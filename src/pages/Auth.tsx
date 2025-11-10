@@ -9,6 +9,13 @@ import { Mail, Lock, User, Chrome } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import AnimatedBackground from '@/components/AnimatedBackground';
+import { z } from 'zod';
+
+const passwordSchema = z.string()
+  .min(8, 'A senha deve ter no mínimo 8 caracteres')
+  .regex(/[0-9]/, 'A senha deve conter pelo menos 1 número')
+  .regex(/[A-Z]/, 'A senha deve conter pelo menos 1 letra maiúscula')
+  .regex(/[!@#$%&*?=\-_+]/, 'A senha deve conter pelo menos 1 caractere especial (!@#$%&*?=-_+)');
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -35,7 +42,17 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        const redirectUrl = `${window.location.origin}/`;
+        // Validar senha antes de criar conta
+        try {
+          passwordSchema.parse(password);
+        } catch (error: any) {
+          if (error instanceof z.ZodError) {
+            toast.error(error.errors[0].message);
+            setLoading(false);
+            return;
+          }
+        }
+        const redirectUrl = `${window.location.origin}/viaje.ro/`;
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -85,7 +102,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`
+          redirectTo: `${window.location.origin}/viaje.ro/`
         }
       });
       
@@ -189,6 +206,11 @@ const Auth = () => {
                   required
                 />
               </div>
+              {isSignUp && (
+                <p className="text-xs text-muted-foreground">
+                  Mínimo 8 caracteres, 1 número, 1 letra maiúscula e 1 caractere especial (!@#$%&*?=-_+)
+                </p>
+                )}
             </div>
             
             <Button type="submit" className="w-full" disabled={loading}>
