@@ -367,6 +367,7 @@ export const AccountSettingsModal = ({ open, onOpenChange, onProfileUpdated }: A
                 onClick={handleUpdateEmail} 
                 variant="secondary"
                 disabled={!!emailError || !newEmail || !confirmEmail}
+                className="disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Atualizar Email
               </Button>
@@ -513,6 +514,7 @@ export const AccountSettingsModal = ({ open, onOpenChange, onProfileUpdated }: A
                   !passwordRequirements.hasUppercase ||
                   !passwordRequirements.hasSpecialChar
                 }
+                className="disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Atualizar Senha
               </Button>
