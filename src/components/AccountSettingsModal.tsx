@@ -21,9 +21,10 @@ const passwordSchema = z.string()
 interface AccountSettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onProfileUpdated?: () => void;
 }
 
-export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModalProps) => {
+export const AccountSettingsModal = ({ open, onOpenChange, onProfileUpdated }: AccountSettingsModalProps) => {
   const { user } = useAuth();
   const { profile, updateProfile } = useProfile();
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
@@ -139,6 +140,7 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
       display_name: displayName || null,
     });
     setSaving(false);
+    onProfileUpdated?.();
   };
 
   const handleUpdateEmail = async () => {
