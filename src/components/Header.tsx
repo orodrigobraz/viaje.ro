@@ -11,7 +11,7 @@ import { useState } from 'react';
 
 export const Header = () => {
   const { user, signOut } = useAuth();
-  const { profile } = useProfile();
+  const { profile, loadProfile } = useProfile();
   const [mapSettingsOpen, setMapSettingsOpen] = useState(false);
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false);
 
@@ -22,6 +22,10 @@ export const Header = () => {
     } catch (error) {
       toast.error('Erro ao fazer logout');
     }
+  };
+
+  const handleProfileUpdated = async () => {
+    await loadProfile();
   };
 
   const displayName = profile?.display_name || user?.email?.split('@')[0] || 'Usuário';
@@ -55,7 +59,7 @@ export const Header = () => {
                     </AvatarFallback>
                   </Avatar>
                   <span className="text-sm font-medium text-foreground hidden sm:inline">
-                    {displayName}
+                    Olá, {displayName}
                   </span>
                 </div>
                 
@@ -101,7 +105,11 @@ export const Header = () => {
           </div>
           
           <SettingsModal open={mapSettingsOpen} onOpenChange={setMapSettingsOpen} />
-          <AccountSettingsModal open={accountSettingsOpen} onOpenChange={setAccountSettingsOpen} />
+          <AccountSettingsModal 
+            open={accountSettingsOpen} 
+            onOpenChange={setAccountSettingsOpen}
+            onProfileUpdated={handleProfileUpdated}
+          />
         </div>
       </div>
     </header>
