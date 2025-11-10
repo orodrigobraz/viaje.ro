@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Lock, User, Chrome } from 'lucide-react';
+import { Mail, Lock, User, Chrome, Eye, EyeOff, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import AnimatedBackground from '@/components/AnimatedBackground';
@@ -23,6 +23,13 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    minLength: false,
+    hasNumber: false,
+    hasUppercase: false,
+    hasSpecialChar: false
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,6 +42,25 @@ const Auth = () => {
     };
     checkUser();
   }, [navigate]);
+
+  // Validar requisitos de senha em tempo real
+  useEffect(() => {
+    if (password) {
+      setPasswordRequirements({
+        minLength: password.length >= 8,
+        hasNumber: /[0-9]/.test(password),
+        hasUppercase: /[A-Z]/.test(password),
+        hasSpecialChar: /[!@#$%&*?=\-_+]/.test(password)
+      });
+    } else {
+      setPasswordRequirements({
+        minLength: false,
+        hasNumber: false,
+        hasUppercase: false,
+        hasSpecialChar: false
+      });
+    }
+  }, [password]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -198,19 +224,72 @@ const Auth = () => {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
-              {isSignUp && (
-                <p className="text-xs text-muted-foreground">
-                  Mínimo 8 caracteres, 1 número, 1 letra maiúscula e 1 caractere especial (!@#$%&*?=-_+)
-                </p>
-                )}
+              {isSignUp && password && (
+                <div className="space-y-1 px-2 py-2 bg-muted/50 rounded-md">
+                  <p className="text-xs font-medium mb-2">Requisitos da senha:</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs">
+                      {passwordRequirements.minLength ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <X className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span className={passwordRequirements.minLength ? 'line-through text-muted-foreground' : ''}>
+                        Mínimo 8 caracteres
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {passwordRequirements.hasNumber ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <X className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span className={passwordRequirements.hasNumber ? 'line-through text-muted-foreground' : ''}>
+                        Pelo menos 1 número
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {passwordRequirements.hasUppercase ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <X className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span className={passwordRequirements.hasUppercase ? 'line-through text-muted-foreground' : ''}>
+                        Pelo menos 1 letra maiúscula
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {passwordRequirements.hasSpecialChar ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <X className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span className={passwordRequirements.hasSpecialChar ? 'line-through text-muted-foreground' : ''}>
+                        Pelo menos 1 caractere especial (!@#$%&*?=-_+)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             
             <Button type="submit" className="w-full" disabled={loading}>

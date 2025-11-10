@@ -8,8 +8,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Mail, Lock, Trash2, Upload, Check, X } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { User, Mail, Lock, Trash2, Upload, Check, X, Eye, EyeOff } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
 
 const passwordSchema = z.string()
@@ -41,6 +41,8 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [currentPasswordError, setCurrentPasswordError] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Password requirements state
   const [passwordRequirements, setPasswordRequirements] = useState({
@@ -269,15 +271,15 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b sticky top-0 bg-background z-10">
           <DialogTitle>Configurações da Conta</DialogTitle>
           <DialogDescription>
             Gerencie suas informações pessoais e configurações de segurança
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
           {/* Avatar e Nome */}
           <div className="space-y-4 p-4 rounded-lg bg-primary/10 dark:bg-primary/20 border-2 border-primary/20 dark:border-primary/30">
             <div className="flex items-center gap-4">
@@ -396,13 +398,27 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
               </div>
               <div>
                 <Label htmlFor="new-password" className="text-sm mb-1.5 block">Nova senha</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Nova senha"
-                />
+                <div className="relative">
+                  <Input
+                    id="new-password"
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Nova senha"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
               
               {/* Password Requirements Checklist */}
@@ -456,13 +472,27 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
 
               <div>
                 <Label htmlFor="confirm-password" className="text-sm mb-1.5 block">Confirmar nova senha</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirmar nova senha"
-                />
+                <div className="relative">
+                  <Input
+                    id="confirm-password"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirmar nova senha"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
               {confirmPassword && newPassword !== confirmPassword && (
                 <p className="text-xs text-destructive mt-1">As senhas não coincidem</p>
@@ -494,11 +524,13 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
               Zona de Perigo
             </Label>
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="w-full">
-                  Deletar Conta
-                </Button>
-              </AlertDialogTrigger>
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                Deletar Conta
+              </Button>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Confirme a exclusão da conta</AlertDialogTitle>
