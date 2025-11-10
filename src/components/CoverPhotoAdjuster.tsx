@@ -24,8 +24,19 @@ export const CoverPhotoAdjuster = ({
   const [svgPaths, setSvgPaths] = useState<string[]>([]);
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
   const [viewBox, setViewBox] = useState<string>('0 0 100 100');
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(1);
   const containerRef = useRef<HTMLDivElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
+
+  // Carregar dimensões reais da imagem
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      const imgAspectRatio = img.width / img.height;
+      setImageAspectRatio(imgAspectRatio);
+    };
+    img.src = photoUrl;
+  }, [photoUrl]);
 
   // Carregar geometria da cidade
   useEffect(() => {
@@ -118,7 +129,7 @@ export const CoverPhotoAdjuster = ({
               }).join(' ') + ' Z';
               paths.push(pathData);
               
-              // Buracos (holes) se existirem
+              // Buracos se existirem
               for (let i = 1; i < polygon.length; i++) {
                 const holePath = polygon[i].map((coord, j) => {
                   const normalizedX = (coord[0] - minLng) / lngSpan;
@@ -218,19 +229,23 @@ export const CoverPhotoAdjuster = ({
                 {(() => {
                   const viewBoxWidth = 100;
                   const viewBoxHeight = 100 / aspectRatio;
-                  // Corrigir: quando scale aumenta, a imagem deve aumentar (multiplicar, não dividir)
-                  const imageSize = 100 * position.scale;
-                  const imageX = position.x * viewBoxWidth - (imageSize / 2);
-                  const imageY = position.y * viewBoxHeight - (imageSize / 2);
+                  // Calcular dimensões da imagem mantendo o aspect ratio real
+                  // Usar um tamanho base e aplicar o aspect ratio da imagem
+                  const baseSize = 100 * position.scale;
+                  // Manter proporções: se aspect ratio > 1, imagem é mais larga
+                  const imageWidth = baseSize * imageAspectRatio;
+                  const imageHeight = baseSize;
+                  const imageX = position.x * viewBoxWidth - (imageWidth / 2);
+                  const imageY = position.y * viewBoxHeight - (imageHeight / 2);
                   
                   return (
                     <image
                       href={photoUrl}
                       x={imageX}
                       y={imageY}
-                      width={imageSize}
-                      height={imageSize}
-                      preserveAspectRatio="xMidYMid slice"
+                      width={imageWidth}
+                      height={imageHeight}
+                      preserveAspectRatio="none"
                     />
                   );
                 })()}
@@ -287,8 +302,8 @@ export const CoverPhotoAdjuster = ({
         <Slider
           value={[position.scale]}
           onValueChange={handleScaleChange}
-          min={1}
-          max={5}
+          min={0.5}
+          max={10}
           step={0.1}
           className="w-full"
         />

@@ -82,7 +82,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     };
   }, []);
 
-  // Função auxiliar para criar conteúdo do popup
+  // Função para criar conteúdo do popup
   const createPopupContent = (cityName: string, stateName: string, review: any, idSuffix: string = '') => {
     const popupContent = document.createElement('div');
     popupContent.className = 'p-3 min-w-[200px]';
@@ -107,7 +107,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     return popupContent;
   };
 
-  // Função auxiliar para configurar eventos do popup
+  // Função para configurar eventos do popup
   const setupPopupEvents = (cityName: string, cityData: any, idSuffix: string = '') => {
     setTimeout(() => {
       const btnInfo = document.getElementById(`btn-info-${cityName.replace(/\s/g, '-')}${idSuffix}`);
@@ -131,7 +131,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     }, 100);
   };
 
-  // Função auxiliar para adicionar camada da cidade com suporte a foto de capa usando sobreposição SVG
+  // Função para adicionar camada da cidade com suporte a foto de capa usando sobreposição SVG
   const addCityLayerWithCover = async (
     feature: GeoJSONFeature, 
     stateColor: string, 
@@ -290,7 +290,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     }
   };
 
-  // Função auxiliar para adicionar camada padrão da cidade sem foto de capa
+  // Função para adicionar camada padrão da cidade sem foto de capa
   const addStandardCityLayer = (feature: GeoJSONFeature, stateColor: string, cityData: any, review: any) => {
     if (!mapInstanceRef.current) return;
 

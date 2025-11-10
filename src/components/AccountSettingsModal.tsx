@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { User, Mail, Lock, Trash2, Upload } from 'lucide-react';
+import { User, Mail, Lock, Trash2, Upload, Check, X } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
 
@@ -39,6 +39,58 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
   const [deleteEmail, setDeleteEmail] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [currentPasswordError, setCurrentPasswordError] = useState('');
+
+  // Password requirements state
+  const [passwordRequirements, setPasswordRequirements] = useState({
+    minLength: false,
+    hasNumber: false,
+    hasUppercase: false,
+    hasSpecialChar: false
+  });
+
+  // Update avatar URL when profile changes
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      setAvatarUrl(profile.avatar_url);
+    }
+  }, [profile?.avatar_url]);
+
+  // Validate email in real-time
+  useEffect(() => {
+    if (newEmail || confirmEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (newEmail && !emailRegex.test(newEmail)) {
+        setEmailError('Email inválido');
+      } else if (confirmEmail && newEmail !== confirmEmail) {
+        setEmailError('Os emails não coincidem');
+      } else {
+        setEmailError('');
+      }
+    } else {
+      setEmailError('');
+    }
+  }, [newEmail, confirmEmail]);
+
+  // Validate password requirements in real-time
+  useEffect(() => {
+    if (newPassword) {
+      setPasswordRequirements({
+        minLength: newPassword.length >= 8,
+        hasNumber: /[0-9]/.test(newPassword),
+        hasUppercase: /[A-Z]/.test(newPassword),
+        hasSpecialChar: /[!@#$%&*?=\-_+]/.test(newPassword)
+      });
+    } else {
+      setPasswordRequirements({
+        minLength: false,
+        hasNumber: false,
+        hasUppercase: false,
+        hasSpecialChar: false
+      });
+    }
+  }, [newPassword]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,6 +167,28 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
     }
   };
 
+  const handleCurrentPasswordBlur = async () => {
+    if (!currentPassword) {
+      setCurrentPasswordError('');
+      return;
+    }
+
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: currentPassword
+      });
+
+      if (signInError) {
+        setCurrentPasswordError('Senha incorreta');
+      } else {
+        setCurrentPasswordError('');
+      }
+    } catch (error) {
+      setCurrentPasswordError('Erro ao verificar senha');
+    }
+  };
+
   const handleUpdatePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error('Preencha todos os campos de senha');
@@ -143,6 +217,7 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
       });
 
       if (signInError) {
+        setCurrentPasswordError('Senha atual incorreta');
         toast.error('Senha atual incorreta');
         return;
       }
@@ -153,6 +228,7 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      setCurrentPasswordError('');
     } catch (error: any) {
       toast.error(error.message || 'Erro ao atualizar senha');
     }
@@ -193,7 +269,7 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configurações da Conta</DialogTitle>
           <DialogDescription>
@@ -203,7 +279,7 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
 
         <div className="space-y-6 py-4">
           {/* Avatar e Nome */}
-          <div className="space-y-4">
+          <div className="space-y-4 p-4 rounded-lg bg-primary/10 dark:bg-primary/20 border-2 border-primary/20 dark:border-primary/30">
             <div className="flex items-center gap-4">
               <Avatar className="h-20 w-20">
                 <AvatarImage src={avatarUrl} />
@@ -231,7 +307,7 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
             </div>
 
             <div>
-              <Label htmlFor="display-name" className="flex items-center gap-2">
+              <Label htmlFor="display-name" className="flex items-center gap-2 mb-2">
                 <User className="h-4 w-4" />
                 Nome de Exibição
               </Label>
@@ -243,17 +319,14 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
               />
             </div>
 
-            <Button onClick={handleSaveProfile} disabled={saving} className="w-full">
+            <Button onClick={handleSaveProfile} disabled={saving}>
               {saving ? 'Salvando...' : 'Salvar Perfil'}
             </Button>
           </div>
 
-          {/* Separador */}
-          <div className="border-t border-border" />
-
           {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="new-email" className="flex items-center gap-2">
+          <div className="space-y-2 p-4 rounded-lg bg-blue-100 dark:bg-blue-950/30 border-2 border-blue-300 dark:border-blue-700">
+            <Label htmlFor="new-email" className="flex items-center gap-2 mb-2">
               <Mail className="h-4 w-4" />
               Alterar Email
             </Label>
@@ -261,68 +334,161 @@ export const AccountSettingsModal = ({ open, onOpenChange }: AccountSettingsModa
               Email atual: {user?.email}
             </div>
             <div className="space-y-2">
-              <Input
-                id="new-email"
-                type="email"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
-                placeholder="Novo email"
-              />
-              <Input
-                id="confirm-email"
-                type="email"
-                value={confirmEmail}
-                onChange={(e) => setConfirmEmail(e.target.value)}
-                placeholder="Confirmar novo email"
-              />
-              <Button onClick={handleUpdateEmail} variant="secondary" className="w-full">
+              <div>
+                <Label htmlFor="new-email" className="text-sm mb-1.5 block">Novo email</Label>
+                <Input
+                  id="new-email"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="Novo email"
+                  className={emailError && newEmail ? 'border-destructive' : ''}
+                />
+              </div>
+              <div>
+                <Label htmlFor="confirm-email" className="text-sm mb-1.5 block">Confirmar novo email</Label>
+                <Input
+                  id="confirm-email"
+                  type="email"
+                  value={confirmEmail}
+                  onChange={(e) => setConfirmEmail(e.target.value)}
+                  placeholder="Confirmar novo email"
+                  className={emailError && confirmEmail ? 'border-destructive' : ''}
+                />
+                {emailError && (newEmail || confirmEmail) && (
+                  <p className="text-xs text-destructive mt-1">{emailError}</p>
+                )}
+              </div>
+              <Button 
+                onClick={handleUpdateEmail} 
+                variant="secondary"
+                disabled={!!emailError || !newEmail || !confirmEmail}
+              >
                 Atualizar Email
               </Button>
             </div>
           </div>
 
           {/* Senha */}
-          <div className="space-y-2">
-            <Label htmlFor="current-password" className="flex items-center gap-2">
+          <div className="space-y-2 p-4 rounded-lg bg-amber-100 dark:bg-amber-950/30 border-2 border-amber-300 dark:border-amber-700">
+            <Label htmlFor="current-password" className="flex items-center gap-2 mb-2">
               <Lock className="h-4 w-4" />
               Alterar Senha
             </Label>
-            <div className="space-y-2">
-              <Input
-                id="current-password"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Senha atual"
-              />
-              <Input
-                id="new-password"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nova senha"
-              />
-              <Input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirmar nova senha"
-              />
-              <p className="text-xs text-muted-foreground">
-                A senha deve ter: mínimo 8 caracteres, 1 número, 1 letra maiúscula e 1 caractere especial (!@#$%&*?=-_+)
-              </p>
-              <Button onClick={handleUpdatePassword} variant="secondary" className="w-full">
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="current-password" className="text-sm mb-1.5 block">Senha atual</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    setCurrentPasswordError('');
+                  }}
+                  onBlur={handleCurrentPasswordBlur}
+                  placeholder="Senha atual"
+                  className={currentPasswordError ? 'border-destructive' : ''}
+                />
+                {currentPasswordError && (
+                  <p className="text-xs text-destructive mt-1">{currentPasswordError}</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="new-password" className="text-sm mb-1.5 block">Nova senha</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Nova senha"
+                />
+              </div>
+              
+              {/* Password Requirements Checklist */}
+              {newPassword && (
+                <div className="space-y-1 px-2 py-2 bg-muted/50 rounded-md">
+                  <p className="text-xs font-medium mb-2">Requisitos da senha:</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-xs">
+                      {passwordRequirements.minLength ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <X className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span className={passwordRequirements.minLength ? 'line-through text-muted-foreground' : ''}>
+                        Mínimo 8 caracteres
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {passwordRequirements.hasNumber ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <X className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span className={passwordRequirements.hasNumber ? 'line-through text-muted-foreground' : ''}>
+                        Pelo menos 1 número
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {passwordRequirements.hasUppercase ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <X className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span className={passwordRequirements.hasUppercase ? 'line-through text-muted-foreground' : ''}>
+                        Pelo menos 1 letra maiúscula
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      {passwordRequirements.hasSpecialChar ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <X className="h-3 w-3 text-muted-foreground" />
+                      )}
+                      <span className={passwordRequirements.hasSpecialChar ? 'line-through text-muted-foreground' : ''}>
+                        Pelo menos 1 caractere especial (!@#$%&*?=-_+)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label htmlFor="confirm-password" className="text-sm mb-1.5 block">Confirmar nova senha</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirmar nova senha"
+                />
+              </div>
+              {confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-xs text-destructive mt-1">As senhas não coincidem</p>
+              )}
+              <Button 
+                onClick={handleUpdatePassword} 
+                variant="secondary"
+                disabled={
+                  !currentPassword || 
+                  !!currentPasswordError || 
+                  !newPassword || 
+                  !confirmPassword ||
+                  newPassword !== confirmPassword ||
+                  !passwordRequirements.minLength ||
+                  !passwordRequirements.hasNumber ||
+                  !passwordRequirements.hasUppercase ||
+                  !passwordRequirements.hasSpecialChar
+                }
+              >
                 Atualizar Senha
               </Button>
             </div>
           </div>
 
-          {/* Separador */}
-          <div className="border-t border-border" />
-
           {/* Deletar Conta */}
-          <div className="space-y-2">
+          <div className="space-y-2 p-4 rounded-lg bg-destructive/10 dark:bg-destructive/20 border-2 border-destructive/30 dark:border-destructive/40">
             <Label className="text-destructive flex items-center gap-2">
               <Trash2 className="h-4 w-4" />
               Zona de Perigo
