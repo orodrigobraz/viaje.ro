@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, X, Camera, Trash2, Image as ImageIcon } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Star, X, Camera, Trash2, Image as ImageIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { CityReview, CityReviewPhoto } from '@/hooks/useCityReviews';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CoverPhotoAdjuster } from './CoverPhotoAdjuster';
@@ -39,6 +41,9 @@ export const CityReviewModal = ({
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [isDateFieldsOpen, setIsDateFieldsOpen] = useState(true);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -55,9 +60,14 @@ export const CityReviewModal = ({
         y: existingReview.cover_photo_position_y,
         scale: existingReview.cover_photo_scale,
       });
+      // TODO: Carregar datas se existirem no review
+      setStartDate('');
+      setEndDate('');
     } else {
       setRating(0);
       setComment('');
+      setStartDate('');
+      setEndDate('');
       setCoverPosition({ x: 0.5, y: 0.5, scale: 1.0 });
     }
     setPhotoFiles([]);
@@ -197,6 +207,111 @@ export const CityReviewModal = ({
             </div>
           </div>
 
+          {/* Date Range */}
+          <div className="space-y-3">
+            <div 
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => setIsDateFieldsOpen(!isDateFieldsOpen)}
+            >
+              <label className="text-sm font-semibold">Datas</label>
+              {isDateFieldsOpen ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]" />
+              )}
+            </div>
+            
+            <div 
+              className={`overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+                isDateFieldsOpen 
+                  ? 'max-h-96 opacity-100' 
+                  : 'max-h-0 opacity-0'
+              }`}
+            >
+              <div className="grid grid-cols-2 gap-3 py-1 px-0.5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="start-date" className="text-xs text-muted-foreground">
+                    De
+                  </Label>
+                  <Input
+                    id="start-date"
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    max={endDate || undefined}
+                    className="ring-offset-0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="end-date" className="text-xs text-muted-foreground">
+                    Até
+                  </Label>
+                  <Input
+                    id="end-date"
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate || undefined}
+                    className="ring-offset-0"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            {(() => {
+              if (!startDate && !endDate) {
+                return null;
+              }
+              
+              if (endDate && !startDate) {
+                return (
+                  <p className="text-xs text-destructive mt-1">
+                    É necessário informar a data de entrada também.
+                  </p>
+                );
+              }
+              
+              if (startDate && !endDate) {
+                return (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Estadia de 1 dia
+                  </p>
+                );
+              }
+              
+              if (startDate && endDate) {
+                const start = new Date(startDate + 'T00:00:00');
+                const end = new Date(endDate + 'T00:00:00');
+                const diffTime = end.getTime() - start.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                
+                const formatDate = (date: Date) => {
+                  return date.toLocaleDateString('pt-BR', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  });
+                };
+                
+                if (startDate === endDate) {
+                  return (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Visitou em {formatDate(start)} (1 dia)
+                    </p>
+                  );
+                }
+                
+                return (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Visitou entre {formatDate(start)} até {formatDate(end)} ({diffDays} {diffDays === 1 ? 'dia' : 'dias'})
+                  </p>
+                );
+              }
+              
+              return null;
+            })()}
+          </div>
+
           {/* Comment */}
           <div className="space-y-3">
             <label className="text-sm font-semibold">Seu comentário</label>
@@ -264,7 +379,6 @@ export const CityReviewModal = ({
                                 if (success) {
                                   // Forçar atualização do componente
                                   // O loadReviews() já foi chamado dentro de removeCoverPhoto
-                                  // O componente será atualizado automaticamente quando existingPhotos mudar
                                 }
                               }
                             }}
