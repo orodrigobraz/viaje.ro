@@ -16,6 +16,8 @@ export interface CityReview {
   cover_photo_position_x: number;
   cover_photo_position_y: number;
   cover_photo_scale: number;
+  visit_start_date: string | null;
+  visit_end_date: string | null;
 }
 
 export interface CityReviewPhoto {
@@ -23,7 +25,7 @@ export interface CityReviewPhoto {
   review_id: string;
   photo_url: string;
   created_at: string;
-  is_cover: boolean | null;
+  is_cover: boolean;
 }
 
 export const useCityReviews = () => {
@@ -51,32 +53,35 @@ export const useCityReviews = () => {
           ...review,
           city_code: review.city_code || null,
         } as CityReview);
+        console.log(`useCityReviews - Review carregada: ${review.city_name}, ID: ${review.id}`);
       });
       setReviews(reviewsMap);
 
-      // Carregar fotos de todas as avaliações
+      // Load photos for all reviews
       if (reviewsData && reviewsData.length > 0) {
         const reviewIds = reviewsData.map((r) => r.id);
+        console.log('useCityReviews - Carregando fotos para reviews:', reviewIds);
+        
         const { data: photosData, error: photosError } = await supabase
           .from('city_review_photos')
           .select('*')
           .in('review_id', reviewIds);
 
-        if (photosError) throw photosError;
+        if (photosError) {
+          console.error('useCityReviews - Erro ao carregar fotos:', photosError);
+          throw photosError;
+        }
+
+        console.log('useCityReviews - Fotos carregadas:', photosData?.length, photosData);
 
         const photosMap = new Map<string, CityReviewPhoto[]>();
-        photosData?.forEach((photo: any) => {
-          const photoTyped: CityReviewPhoto = {
-            id: photo.id,
-            review_id: photo.review_id,
-            photo_url: photo.photo_url,
-            created_at: photo.created_at,
-            is_cover: photo.is_cover === null ? null : Boolean(photo.is_cover),
-          };
+        photosData?.forEach((photo) => {
           const existing = photosMap.get(photo.review_id) || [];
-          photosMap.set(photo.review_id, [...existing, photoTyped]);
+          photosMap.set(photo.review_id, [...existing, photo]);
+          console.log(`useCityReviews - Foto adicionada ao mapa: reviewId=${photo.review_id}, is_cover=${photo.is_cover}, url=${photo.photo_url}`);
         });
         setPhotos(photosMap);
+        console.log('useCityReviews - Total de reviews com fotos:', photosMap.size);
       }
     } catch (error) {
       console.error('Error loading reviews:', error);
@@ -110,12 +115,14 @@ export const useCityReviews = () => {
     comment: string,
     photoFiles: File[],
     coverPhotoIndex: number | null = null,
-    coverPosition: { x: number; y: number; scale: number } = { x: 0.5, y: 0.5, scale: 1.0 }
+    coverPosition: { x: number; y: number; scale: number } = { x: 0.5, y: 0.5, scale: 1.0 },
+    visitStartDate: string | null = null,
+    visitEndDate: string | null = null
   ): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      // Obter city_code da tabela municipios
+      // Get city_code from municipios table
       const { data: municipioData } = await supabase
         .from('municipios')
         .select('cd_mun')
@@ -126,7 +133,7 @@ export const useCityReviews = () => {
       
       const cityCode = municipioData?.cd_mun || null;
 
-      // Criar ou atualizar avaliação
+      // Upsert review
       const { data: reviewData, error: reviewError } = await supabase
         .from('city_reviews')
         .upsert({
@@ -139,6 +146,8 @@ export const useCityReviews = () => {
           cover_photo_position_x: coverPosition.x,
           cover_photo_position_y: coverPosition.y,
           cover_photo_scale: coverPosition.scale,
+          visit_start_date: visitStartDate,
+          visit_end_date: visitEndDate,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id,city_name,state_name',
@@ -148,10 +157,8 @@ export const useCityReviews = () => {
 
       if (reviewError) throw reviewError;
 
-      // Fazer upload das fotos
+      // Upload photos
       if (photoFiles.length > 0) {
-        const newPhotoIds: string[] = [];
-        
         for (let i = 0; i < photoFiles.length; i++) {
           const file = photoFiles[i];
           const fileExt = file.name.split('.').pop();
@@ -167,35 +174,15 @@ export const useCityReviews = () => {
             .from('city-review-photos')
             .getPublicUrl(fileName);
 
-          const { data: insertedPhoto, error: photoError } = await supabase
+          const { error: photoError } = await supabase
             .from('city_review_photos')
             .insert({
               review_id: reviewData.id,
               photo_url: publicUrl,
-              is_cover: false, // Vamos definir a capa depois que todas as fotos forem inseridas
-            })
-            .select()
-            .single();
+              is_cover: coverPhotoIndex === i,
+            });
 
           if (photoError) throw photoError;
-          if (insertedPhoto) {
-            newPhotoIds.push(insertedPhoto.id);
-          }
-        }
-        
-        // Se uma nova foto foi definida como capa, remover capa de todas as outras fotos e definir a nova
-        if (coverPhotoIndex !== null && coverPhotoIndex >= 0 && coverPhotoIndex < newPhotoIds.length) {
-          // Remover capa de todas as fotos desta avaliação
-          await supabase
-            .from('city_review_photos')
-            .update({ is_cover: false } as any)
-            .eq('review_id', reviewData.id);
-          
-          // Definir a nova foto como capa
-          await supabase
-            .from('city_review_photos')
-            .update({ is_cover: true } as any)
-            .eq('id', newPhotoIds[coverPhotoIndex]);
         }
       }
 
@@ -223,7 +210,7 @@ export const useCityReviews = () => {
       const review = getReview(cityName, stateName);
       if (!review) return false;
 
-      // Excluir fotos do armazenamento
+      // Delete photos from storage
       const reviewPhotos = getReviewPhotos(review.id);
       for (const photo of reviewPhotos) {
         const path = photo.photo_url.split('/city-review-photos/')[1];
@@ -291,18 +278,18 @@ export const useCityReviews = () => {
 
   const setCoverPhoto = async (photoId: string, reviewId: string): Promise<boolean> => {
     try {
-      // Remover capa de todas as fotos desta avaliação
+      // Remove cover from all photos of this review
       const { error: removeError } = await supabase
         .from('city_review_photos')
-        .update({ is_cover: false } as any)
+        .update({ is_cover: false })
         .eq('review_id', reviewId);
 
       if (removeError) throw removeError;
 
-      // Definir nova foto de capa
+      // Set new cover photo
       const { error: setCoverError } = await supabase
         .from('city_review_photos')
-        .update({ is_cover: true } as any)
+        .update({ is_cover: true })
         .eq('id', photoId);
 
       if (setCoverError) throw setCoverError;
@@ -318,33 +305,6 @@ export const useCityReviews = () => {
       toast({
         title: 'Erro',
         description: 'Não foi possível definir a foto de capa.',
-        variant: 'destructive',
-      });
-      return false;
-    }
-  };
-
-  const removeCoverPhoto = async (reviewId: string): Promise<boolean> => {
-    try {
-      // Remover capa de todas as fotos desta avaliação
-      const { error: removeError } = await supabase
-        .from('city_review_photos')
-        .update({ is_cover: false } as any)
-        .eq('review_id', reviewId);
-
-      if (removeError) throw removeError;
-
-      await loadReviews();
-      toast({
-        title: 'Sucesso',
-        description: 'Foto de capa removida!',
-      });
-      return true;
-    } catch (error) {
-      console.error('Error removing cover photo:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível remover a foto de capa.',
         variant: 'destructive',
       });
       return false;
@@ -380,6 +340,32 @@ export const useCityReviews = () => {
       toast({
         title: 'Erro',
         description: 'Não foi possível atualizar a posição da foto.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const removeCoverPhoto = async (reviewId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('city_review_photos')
+        .update({ is_cover: false })
+        .eq('review_id', reviewId);
+
+      if (error) throw error;
+
+      await loadReviews();
+      toast({
+        title: 'Sucesso',
+        description: 'Foto de capa removida!',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error removing cover photo:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível remover a foto de capa.',
         variant: 'destructive',
       });
       return false;
