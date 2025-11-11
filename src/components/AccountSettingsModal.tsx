@@ -60,6 +60,14 @@ export const AccountSettingsModal = ({ open, onOpenChange, onProfileUpdated }: A
     }
   }, [profile?.avatar_url]);
 
+  // Limpar campos quando o dialog de deletar conta for aberto
+  useEffect(() => {
+    if (showDeleteDialog) {
+      setDeleteEmail('');
+      setDeletePassword('');
+    }
+  }, [showDeleteDialog]);
+
   // Validate email in real-time
   useEffect(() => {
     if (newEmail || confirmEmail) {
@@ -261,15 +269,25 @@ export const AccountSettingsModal = ({ open, onOpenChange, onProfileUpdated }: A
         return;
       }
 
-      // Deletar conta (requer setup adicional no Supabase)
-      toast.info('Entre em contato com o suporte para deletar sua conta');
+      // Deletar conta usando a função do banco de dados
+      const { error: deleteError } = await supabase.rpc('delete_user_account');
+
+      if (deleteError) throw deleteError;
+
+      toast.success('Conta deletada com sucesso!');
       setShowDeleteDialog(false);
       setDeleteEmail('');
       setDeletePassword('');
+      
+      // Fazer logout e redirecionar para a página de login
+      await supabase.auth.signOut();
+      window.location.href = '/auth';
     } catch (error: any) {
-      toast.error('Erro ao processar solicitação');
+      console.error('Error deleting account:', error);
+      toast.error(error.message || 'Erro ao deletar conta');
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -550,7 +568,7 @@ export const AccountSettingsModal = ({ open, onOpenChange, onProfileUpdated }: A
                       type="email"
                       value={deleteEmail}
                       onChange={(e) => setDeleteEmail(e.target.value)}
-                      placeholder={user?.email}
+                      placeholder="Digite seu email"
                     />
                   </div>
                   <div className="space-y-2">
@@ -560,7 +578,7 @@ export const AccountSettingsModal = ({ open, onOpenChange, onProfileUpdated }: A
                       type="password"
                       value={deletePassword}
                       onChange={(e) => setDeletePassword(e.target.value)}
-                      placeholder="Sua senha"
+                      placeholder="Digite sua senha"
                     />
                   </div>
                 </div>

@@ -18,7 +18,7 @@ interface CityReviewModalProps {
   stateName: string;
   existingReview?: CityReview;
   existingPhotos?: CityReviewPhoto[];
-  onSave: (rating: number, comment: string, photoFiles: File[], coverPhotoIndex: number | null, coverPosition: { x: number; y: number; scale: number }) => Promise<boolean>;
+  onSave: (rating: number, comment: string, photoFiles: File[], coverPhotoIndex: number | null, coverPosition: { x: number; y: number; scale: number }, visitStartDate: string | null, visitEndDate: string | null) => Promise<boolean>;
   onDelete?: () => Promise<boolean>;
   onDeletePhoto?: (photoId: string, photoUrl: string) => Promise<boolean>;
   onSetCoverPhoto?: (photoId: string, reviewId: string) => Promise<boolean>;
@@ -60,9 +60,10 @@ export const CityReviewModal = ({
         y: existingReview.cover_photo_position_y,
         scale: existingReview.cover_photo_scale,
       });
-      // TODO: Carregar datas se existirem no review
-      setStartDate('');
-      setEndDate('');
+      // Carregar datas se existirem no review
+      // Converter de formato ISO (YYYY-MM-DD ou YYYY-MM-DDTHH:mm:ss) para formato de input date (YYYY-MM-DD)
+      setStartDate(existingReview.visit_start_date ? existingReview.visit_start_date.split('T')[0] : '');
+      setEndDate(existingReview.visit_end_date ? existingReview.visit_end_date.split('T')[0] : '');
     } else {
       setRating(0);
       setComment('');
@@ -73,6 +74,7 @@ export const CityReviewModal = ({
     setPhotoFiles([]);
     setPhotoPreviewUrls([]);
     setCoverPhotoIndex(null);
+    setIsDateFieldsOpen(false); // Sempre começar com o campo de datas fechado
   }, [existingReview, existingPhotos, isOpen]);
 
   const handleStarClick = (value: number) => {
@@ -112,7 +114,15 @@ export const CityReviewModal = ({
     }
 
     setSaving(true);
-    const success = await onSave(rating, comment, photoFiles, coverPhotoIndex, coverPosition);
+    const success = await onSave(
+      rating, 
+      comment, 
+      photoFiles, 
+      coverPhotoIndex, 
+      coverPosition,
+      startDate || null,
+      endDate || null
+    );
     setSaving(false);
 
     if (success) {
@@ -282,9 +292,7 @@ export const CityReviewModal = ({
               if (startDate && endDate) {
                 const start = new Date(startDate + 'T00:00:00');
                 const end = new Date(endDate + 'T00:00:00');
-                const diffTime = end.getTime() - start.getTime();
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-                
+
                 const formatDate = (date: Date) => {
                   return date.toLocaleDateString('pt-BR', {
                     day: 'numeric',
@@ -292,18 +300,49 @@ export const CityReviewModal = ({
                     year: 'numeric'
                   });
                 };
-                
+
+                // Caso especial: mesma data 
                 if (startDate === endDate) {
                   return (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Visitou em {formatDate(start)} (1 dia)
+                      Esteve em {formatDate(start)} <span className="font-bold">(1 dia)</span>
                     </p>
                   );
                 }
-                
+
+                // Calcula diferença exata em anos, meses e dias (baseado no calendário)
+                const diffYearsMonthsDays = (from: Date, to: Date) => {
+                  let y = to.getFullYear() - from.getFullYear();
+                  let m = to.getMonth() - from.getMonth();
+                  let d = to.getDate() - from.getDate();
+
+                  if (d < 0) {
+                    // pegar número de dias no mês anterior de `to`
+                    const prevMonth = new Date(to.getFullYear(), to.getMonth(), 0); // dia 0 = último dia do mês anterior
+                    d += prevMonth.getDate();
+                    m -= 1;
+                  }
+
+                  if (m < 0) {
+                    m += 12;
+                    y -= 1;
+                  }
+
+                  return { years: y, months: m, days: d };
+                };
+
+                const { years, months, days } = diffYearsMonthsDays(start, end);
+
+                const parts: string[] = [];
+                if (years > 0) parts.push(`${years} ${years === 1 ? 'ano' : 'anos'}`);
+                if (months > 0) parts.push(`${months} ${months === 1 ? 'mês' : 'meses'}`);
+                if (days > 0) parts.push(`${days} ${days === 1 ? 'dia' : 'dias'}`);
+
+                const humanDuration = parts.length === 0 ? '0 dias' : parts.length === 1 ? parts[0] : parts.slice(0, -1).join(', ') + ' e ' + parts[parts.length - 1];
+
                 return (
                   <p className="text-xs text-muted-foreground mt-1">
-                    Visitou entre {formatDate(start)} até {formatDate(end)} ({diffDays} {diffDays === 1 ? 'dia' : 'dias'})
+                    Esteve entre {formatDate(start)} até {formatDate(end)} <span className="font-bold">({humanDuration})</span>
                   </p>
                 );
               }
@@ -342,10 +381,10 @@ export const CityReviewModal = ({
                       src={photo.photo_url}
                       alt="Foto da cidade"
                     className={`w-full h-full object-cover rounded-lg border-2 ${
-                      Boolean(photo.is_cover) ? 'border-primary' : 'border-border'
+                      photo.is_cover ? 'border-primary' : 'border-border'
                     }`}
                     />
-                    {Boolean(photo.is_cover) && (
+                    {photo.is_cover && (
                       <Badge className="absolute top-1.5 left-1.5 bg-primary text-primary-foreground">
                         <ImageIcon className="h-3 w-3 mr-1" />
                         Capa

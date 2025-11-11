@@ -8,8 +8,9 @@ import { CityReviewModal } from './CityReviewModal';
 import { getCityData } from '@/data/getCityData';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useCityReviews } from '@/hooks/useCityReviews';
+import { supabase } from '@/integrations/supabase/client';
 
-// Tipos para GeoJSON
+// Types for GeoJSON
 type GeoJSONPolygon = {
   type: "Polygon";
   coordinates: number[][][];
@@ -26,7 +27,7 @@ type GeoJSONFeature = {
   geometry: GeoJSONPolygon | GeoJSONMultiPolygon;
 };
 
-// Correção para marcadores padrão do Leaflet
+// Fix for default markers in Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -58,11 +59,11 @@ export const MapView = ({ cities }: MapViewProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const { stateColors } = useSettings();
-  const { getReview, getReviewPhotos, saveReview, deleteReview, deletePhoto, setCoverPhoto, removeCoverPhoto, updateCoverPosition, reviews, photos } = useCityReviews();
+  const { getReview, getReviewPhotos, saveReview, deleteReview, deletePhoto, setCoverPhoto, updateCoverPosition, removeCoverPhoto, reviews, photos } = useCityReviews();
   const loadedCitiesRef = useRef<Set<string>>(new Set());
   const isLoadingRef = useRef(false);
 
-  // Inicializar mapa uma vez
+  // Initialize map once
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
@@ -82,7 +83,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     };
   }, []);
 
-  // Função para criar conteúdo do popup
+  // Helper function to create popup content
   const createPopupContent = (cityName: string, stateName: string, review: any, idSuffix: string = '') => {
     const popupContent = document.createElement('div');
     popupContent.className = 'p-3 min-w-[200px]';
@@ -107,7 +108,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     return popupContent;
   };
 
-  // Função para configurar eventos do popup
+  // Helper function to setup popup events
   const setupPopupEvents = (cityName: string, cityData: any, idSuffix: string = '') => {
     setTimeout(() => {
       const btnInfo = document.getElementById(`btn-info-${cityName.replace(/\s/g, '-')}${idSuffix}`);
@@ -131,7 +132,7 @@ export const MapView = ({ cities }: MapViewProps) => {
     }, 100);
   };
 
-  // Função para adicionar camada da cidade com suporte a foto de capa usando sobreposição SVG
+  // Helper to add city layer with cover photo support using SVG overlay
   const addCityLayerWithCover = async (
     feature: GeoJSONFeature, 
     stateColor: string, 
@@ -143,107 +144,63 @@ export const MapView = ({ cities }: MapViewProps) => {
 
     if (coverPhoto && review) {
       try {
-        // Obter os limites do polígono
+        // Get the bounds of the polygon
         const bounds = L.geoJSON(feature).getBounds();
         
-        // Calcular posicionamento com base na posição salva
+        // Calculate positioning based on saved position
         const posX = review.cover_photo_position_x || 0.5;
         const posY = review.cover_photo_position_y || 0.5;
         const scale = review.cover_photo_scale || 1.0;
         
-        // Processar todos os polígonos (incluindo MultiPolygon com ilhas)
-        const boundsWidth = bounds.getEast() - bounds.getWest();
-        const boundsHeight = bounds.getNorth() - bounds.getSouth();
-        const boundsNorth = bounds.getNorth();
-        const boundsSouth = bounds.getSouth();
+        // Get polygon coordinates
+        const coords = feature.geometry.type === 'Polygon' 
+          ? feature.geometry.coordinates[0]
+          : feature.geometry.coordinates[0][0];
         
-        // Coletar todos os polígonos para o clipPath
-        const allPolygons: string[] = [];
+        // Normalize coordinates to 0-1 range
+        const west = bounds.getWest();
+        const east = bounds.getEast();
+        const south = bounds.getSouth();
+        const north = bounds.getNorth();
+        const width = east - west;
+        const height = north - south;
         
-        if (feature.geometry.type === 'Polygon') {
-          const polygonCoords = feature.geometry.coordinates as number[][][];
-          polygonCoords.forEach((ring) => {
-            const points = ring.map((c: number[]) => 
-              `${c[0]},${boundsNorth - (c[1] - boundsSouth)}`
-            ).join(' ');
-            allPolygons.push(`<polygon points="${points}" />`);
-          });
-        } else if (feature.geometry.type === 'MultiPolygon') {
-          const multiPolygonCoords = feature.geometry.coordinates as number[][][][];
-          multiPolygonCoords.forEach((polygon: number[][][]) => {
-            polygon.forEach((ring) => {
-              const points = ring.map((c: number[]) => 
-                `${c[0]},${boundsNorth - (c[1] - boundsSouth)}`
-              ).join(' ');
-              allPolygons.push(`<polygon points="${points}" />`);
-            });
-          });
-        }
+        const normalizedPoints = coords.map((c: number[]) => {
+          const x = (c[0] - west) / width;
+          const y = (north - c[1]) / height;
+          return `${x},${y}`;
+        }).join(' ');
         
-        // Carregar imagem para obter dimensões reais
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        
-        try {
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              reject(new Error('Timeout ao carregar imagem'));
-            }, 10000); // 10 segundos de timeout
-            
-            img.onload = () => {
-              clearTimeout(timeout);
-              resolve();
-            };
-            img.onerror = () => {
-              clearTimeout(timeout);
-              reject(new Error('Erro ao carregar imagem'));
-            };
-            img.src = coverPhoto.photo_url;
-          });
-        } catch (error) {
-          console.error('Erro ao carregar imagem de capa:', error);
-          // Se falhar ao carregar imagem, usar camada padrão
-          addStandardCityLayer(feature, stateColor, cityData, review);
-          return;
-        }
-        
-        // Calcular dimensões da imagem mantendo proporção
-        const imageAspectRatio = img.width / img.height;
-        const boundsAspectRatio = boundsWidth / boundsHeight;
-        
-        let imageWidth: number;
-        let imageHeight: number;
-        
-        if (imageAspectRatio > boundsAspectRatio) {
-          // Imagem é mais larga - ajustar pela largura
-          imageWidth = boundsWidth * scale;
-          imageHeight = imageWidth / imageAspectRatio;
-        } else {
-          // Imagem é mais alta - ajustar pela altura
-          imageHeight = boundsHeight * scale;
-          imageWidth = imageHeight * imageAspectRatio;
-        }
-        
-        const imageX = bounds.getWest() + (posX * boundsWidth) - (imageWidth / 2);
-        const imageY = bounds.getSouth() + (posY * boundsHeight) - (imageHeight / 2);
-        
-        // Criar sobreposição SVG com caminho de recorte
-        const uniqueId = feature.properties.CD_MUN || Math.random().toString().replace('.', '');
+        // Create SVG overlay with clip path
+        const cityId = feature.properties.CD_MUN || `city-${Math.random()}`;
         const svgOverlay = L.svgOverlay(
-          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${bounds.getWest()} ${bounds.getSouth()} ${boundsWidth} ${boundsHeight}">
+          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none">
             <defs>
-              <clipPath id="clip-${uniqueId}">
-                ${allPolygons.join('')}
+              <clipPath id="clip-${cityId}" clipPathUnits="objectBoundingBox">
+                <polygon points="${normalizedPoints}" />
               </clipPath>
+              <pattern id="img-${cityId}" 
+                       x="0"
+                       y="0"
+                       width="1" 
+                       height="1"
+                       patternUnits="objectBoundingBox"
+                       viewBox="${posX * 100} ${posY * 100} ${100 / scale} ${100 / scale}"
+                       preserveAspectRatio="xMidYMid slice">
+                <image href="${coverPhoto.photo_url}" 
+                       x="0" 
+                       y="0" 
+                       width="100" 
+                       height="100" 
+                       preserveAspectRatio="xMidYMid slice" />
+              </pattern>
             </defs>
-            <g clip-path="url(#clip-${uniqueId})">
-              <image href="${coverPhoto.photo_url}" 
-                     x="${imageX}" 
-                     y="${imageY}" 
-                     width="${imageWidth}" 
-                     height="${imageHeight}" 
-                     preserveAspectRatio="none" />
-            </g>
+            <rect x="0" 
+                  y="0" 
+                  width="1" 
+                  height="1" 
+                  fill="url(#img-${cityId})" 
+                  clip-path="url(#clip-${cityId})" />
           </svg>`,
           bounds,
           {
@@ -255,20 +212,21 @@ export const MapView = ({ cities }: MapViewProps) => {
         svgOverlay.addTo(mapInstanceRef.current);
         layersRef.current.push(svgOverlay);
         
-        // Adicionar popup à sobreposição SVG (vamos torná-la interativa)
-        const popupContent = createPopupContent(feature.properties.nome, feature.properties.estado, review);
-        
-        // Criar camada de contorno para interação do popup e borda visível
+        // Add the outline layer on top
         const outlineLayer = L.geoJSON(feature, {
           style: {
             color: stateColor,
             weight: 2,
             opacity: 0.8,
             fillOpacity: 0,
-          },
-          interactive: true,
+          }
         });
         
+        outlineLayer.addTo(mapInstanceRef.current);
+        layersRef.current.push(outlineLayer);
+        
+        // Add popup to the outline layer
+        const popupContent = createPopupContent(feature.properties.nome, feature.properties.estado, review);
         outlineLayer.bindPopup(popupContent, {
           maxWidth: 250,
           className: 'custom-popup'
@@ -277,20 +235,17 @@ export const MapView = ({ cities }: MapViewProps) => {
         outlineLayer.on('popupopen', () => {
           setupPopupEvents(feature.properties.nome, cityData);
         });
-        
-        outlineLayer.addTo(mapInstanceRef.current);
-        layersRef.current.push(outlineLayer);
       } catch (error) {
         console.error('Error loading cover photo:', error);
         addStandardCityLayer(feature, stateColor, cityData, review);
       }
     } else {
-      // Sem foto de capa, usar camada padrão
+      // No cover photo, use standard layer
       addStandardCityLayer(feature, stateColor, cityData, review);
     }
   };
 
-  // Função para adicionar camada padrão da cidade sem foto de capa
+  // Helper to add standard city layer without cover photo
   const addStandardCityLayer = (feature: GeoJSONFeature, stateColor: string, cityData: any, review: any) => {
     if (!mapInstanceRef.current) return;
 
@@ -318,18 +273,20 @@ export const MapView = ({ cities }: MapViewProps) => {
     layersRef.current.push(layer);
   };
 
-  // Atualizar cidades
+  // Update cities
   useEffect(() => {
     if (!mapInstanceRef.current || isLoadingRef.current) return;
 
     const currentCitiesKey = cities.map(c => `${c.properties.nome}-${c.properties.estado}`).sort().join(',');
     const loadedCitiesKey = Array.from(loadedCitiesRef.current).sort().join(',');
     
+    console.log('MapView - Cidades recebidas:', cities.length);
+    
     if (currentCitiesKey === loadedCitiesKey) return;
 
     isLoadingRef.current = true;
 
-    // Limpar camadas existentes
+    // Clear existing layers
     layersRef.current.forEach(layer => {
       mapInstanceRef.current?.removeLayer(layer);
     });
@@ -344,13 +301,16 @@ export const MapView = ({ cities }: MapViewProps) => {
 
     const loadCityGeometriesAndUnify = async () => {
       try {
+        console.log('MapView - Iniciando carregamento de geometrias para', cities.length, 'cidades');
+        
         // Carregar geometrias em paralelo em lotes para não sobrecarregar
         const BATCH_SIZE = 10;
-        const batches: typeof cities[] = [];
+        const batches: City[][] = [];
+        
         for (let i = 0; i < cities.length; i += BATCH_SIZE) {
           batches.push(cities.slice(i, i + BATCH_SIZE));
         }
-
+        
         // Processar cada lote em paralelo, mas renderizar progressivamente
         for (const batch of batches) {
           // Carregar todas as geometrias do lote em paralelo
@@ -363,13 +323,13 @@ export const MapView = ({ cities }: MapViewProps) => {
               return { city, geometry: null };
             }
           });
-
+          
           const results = await Promise.all(geometryPromises);
-
+          
           // Renderizar cada cidade conforme carrega
           for (const { city, geometry } of results) {
             if (geometry) {
-              const convertedFeature: GeoJSONFeature = {
+              const feature: GeoJSONFeature = {
                 type: "Feature",
                 properties: { 
                   ...geometry.properties, 
@@ -379,7 +339,7 @@ export const MapView = ({ cities }: MapViewProps) => {
                 },
                 geometry: geometry.geometry as GeoJSONPolygon | GeoJSONMultiPolygon
               };
-
+              
               const state = city.properties.estado;
               const stateColor = stateColors[state] || '#ff7800';
               const cityData = getCityData(city.properties.nome, city.properties.estado);
@@ -388,17 +348,17 @@ export const MapView = ({ cities }: MapViewProps) => {
               if (review) {
                 const allPhotos = getReviewPhotos(review.id);
                 const coverPhoto = allPhotos.find(p => p.is_cover === true);
-                await addCityLayerWithCover(convertedFeature, stateColor, cityData, review, coverPhoto || null);
+                await addCityLayerWithCover(feature, stateColor, cityData, review, coverPhoto || null);
               } else {
-                await addCityLayerWithCover(convertedFeature, stateColor, cityData, review, null);
+                await addCityLayerWithCover(feature, stateColor, cityData, review, null);
               }
-
+              
               loadedCitiesRef.current.add(`${city.properties.nome}-${city.properties.estado}`);
             }
           }
         }
 
-
+        // Ajustar bounds final após todas as cidades serem carregadas
         if (layersRef.current.length > 0) {
           const group = new L.FeatureGroup(layersRef.current);
           mapInstanceRef.current?.fitBounds(group.getBounds().pad(0.1));
@@ -406,7 +366,7 @@ export const MapView = ({ cities }: MapViewProps) => {
       } catch (error) {
         console.error('Erro ao processar polígonos das cidades:', error);
         
-        // Renderização de fallback
+        // Fallback rendering
         cities.forEach(city => {
           if (city.geometry && mapInstanceRef.current) {
             try {
@@ -464,7 +424,9 @@ export const MapView = ({ cities }: MapViewProps) => {
     comment: string, 
     photoFiles: File[], 
     coverPhotoIndex: number | null,
-    coverPosition: { x: number; y: number; scale: number }
+    coverPosition: { x: number; y: number; scale: number },
+    visitStartDate: string | null,
+    visitEndDate: string | null
   ) => {
     if (!selectedCity) return false;
     const success = await saveReview(
@@ -474,7 +436,9 @@ export const MapView = ({ cities }: MapViewProps) => {
       comment, 
       photoFiles, 
       coverPhotoIndex,
-      coverPosition
+      coverPosition,
+      visitStartDate,
+      visitEndDate
     );
     
     if (success) {
@@ -496,8 +460,6 @@ export const MapView = ({ cities }: MapViewProps) => {
     return await deleteReview(selectedCity.nome, selectedCity.estado);
   };
 
-  // Recalcular currentReview e currentPhotos quando reviews ou photos mudarem
-  // Usar useMemo para garantir que seja recalculado quando os dados mudarem
   const currentReview = selectedCity ? getReview(selectedCity.nome, selectedCity.estado) : undefined;
   const currentPhotos = currentReview ? getReviewPhotos(currentReview.id) : [];
 
@@ -525,7 +487,7 @@ export const MapView = ({ cities }: MapViewProps) => {
             onDeletePhoto={deletePhoto}
             onSetCoverPhoto={setCoverPhoto}
             onRemoveCoverPhoto={currentReview ? async () => {
-              await removeCoverPhoto(currentReview.id);
+              return await removeCoverPhoto(currentReview.id);
             } : undefined}
           />
         </>

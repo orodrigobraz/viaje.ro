@@ -18,18 +18,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_cover: boolean | null
           photo_url: string
           review_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_cover?: boolean | null
           photo_url: string
           review_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_cover?: boolean | null
           photo_url?: string
           review_id?: string
         }
@@ -45,34 +48,52 @@ export type Database = {
       }
       city_reviews: {
         Row: {
+          city_code: string | null
           city_name: string
           comment: string | null
+          cover_photo_position_x: number | null
+          cover_photo_position_y: number | null
+          cover_photo_scale: number | null
           created_at: string
           id: string
           rating: number
           state_name: string
           updated_at: string
           user_id: string
+          visit_end_date: string | null
+          visit_start_date: string | null
         }
         Insert: {
+          city_code?: string | null
           city_name: string
           comment?: string | null
+          cover_photo_position_x?: number | null
+          cover_photo_position_y?: number | null
+          cover_photo_scale?: number | null
           created_at?: string
           id?: string
           rating: number
           state_name: string
           updated_at?: string
           user_id: string
+          visit_end_date?: string | null
+          visit_start_date?: string | null
         }
         Update: {
+          city_code?: string | null
           city_name?: string
           comment?: string | null
+          cover_photo_position_x?: number | null
+          cover_photo_position_y?: number | null
+          cover_photo_scale?: number | null
           created_at?: string
           id?: string
           rating?: number
           state_name?: string
           updated_at?: string
           user_id?: string
+          visit_end_date?: string | null
+          visit_start_date?: string | null
         }
         Relationships: []
       }
@@ -85,7 +106,7 @@ export type Database = {
           cd_rgi: string | null
           cd_rgint: string | null
           cd_uf: string | null
-          geometria: unknown | null
+          geometria: unknown
           id: number
           nm_concu: string | null
           nm_mun: string | null
@@ -104,7 +125,7 @@ export type Database = {
           cd_rgi?: string | null
           cd_rgint?: string | null
           cd_uf?: string | null
-          geometria?: unknown | null
+          geometria?: unknown
           id?: number
           nm_concu?: string | null
           nm_mun?: string | null
@@ -123,7 +144,7 @@ export type Database = {
           cd_rgi?: string | null
           cd_rgint?: string | null
           cd_uf?: string | null
-          geometria?: unknown | null
+          geometria?: unknown
           id?: number
           nm_concu?: string | null
           nm_mun?: string | null
@@ -267,7 +288,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_user_account: { Args: never; Returns: undefined }
+      get_municipality_geometry: {
+        Args: { city_name: string; state_name: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

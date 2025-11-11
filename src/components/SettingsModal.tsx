@@ -90,19 +90,24 @@ export const SettingsModal = ({ open: controlledOpen, onOpenChange: controlledOn
                 </div>
                 
                 <Select value={wishlistColor} onValueChange={setWishlistColor}>
-                  <SelectTrigger className="w-[120px]">
-                    <div 
-                      className="w-6 h-6 rounded-full border border-border"
-                      style={{ backgroundColor: wishlistColor }}
-                    />
+                  <SelectTrigger className="w-[140px] h-9 border-2 border-primary/30 hover:border-primary/50 bg-background shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-5 h-5 rounded-full border-2 border-border shadow-sm"
+                        style={{ backgroundColor: wishlistColor }}
+                      />
+                    </div>
                   </SelectTrigger>
                   <SelectContent className="bg-popover border border-border z-[9999]">
                     {colorOptions.map((color) => (
                       <SelectItem key={color.value} value={color.value}>
-                        <div 
-                          className="w-6 h-6 rounded-full border border-border"
-                          style={{ backgroundColor: color.value }}
-                        />
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-5 h-5 rounded-full border-2 border-border"
+                            style={{ backgroundColor: color.value }}
+                          />
+                          <span className="text-sm">{color.label}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -181,19 +186,24 @@ export const SettingsModal = ({ open: controlledOpen, onOpenChange: controlledOn
                       value={stateColors[estado.estado] || '#ff7800'} 
                       onValueChange={(color) => setStateColor(estado.estado, color)}
                     >
-                      <SelectTrigger className="w-[80px] h-8">
-                        <div 
-                          className="w-4 h-4 rounded-full border border-border"
-                          style={{ backgroundColor: stateColors[estado.estado] || '#ff7800' }}
-                        />
+                      <SelectTrigger className="w-[100px] h-9 border-2 border-primary/30 hover:border-primary/50 bg-background shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-5 h-5 rounded-full border-2 border-border shadow-sm"
+                            style={{ backgroundColor: stateColors[estado.estado] || '#ff7800' }}
+                          />
+                        </div>
                       </SelectTrigger>
                       <SelectContent className="bg-popover border border-border z-[9999]">
                         {colorOptions.map((color) => (
                           <SelectItem key={color.value} value={color.value}>
-                            <div 
-                              className="w-4 h-4 rounded-full border border-border"
-                              style={{ backgroundColor: color.value }}
-                            />
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-5 h-5 rounded-full border-2 border-border"
+                                style={{ backgroundColor: color.value }}
+                              />
+                              <span className="text-sm">{color.label}</span>
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
