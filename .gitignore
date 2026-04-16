@@ -17,6 +17,9 @@ dist-ssr
 .env.*
 !.env.example
 
+# Supabase CLI (migrations/config — manter cópia local; não publicar no remoto)
+supabase/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
