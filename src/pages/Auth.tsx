@@ -17,8 +17,11 @@ const passwordSchema = z.string()
   .regex(/[A-Z]/, 'A senha deve conter pelo menos 1 letra maiúscula')
   .regex(/[!@#$%&*?=\-_+]/, 'A senha deve conter pelo menos 1 caractere especial (!@#$%&*?=-_+)');
 
+const AUTH_REDIRECT_URL = 'https://orodrigobraz.github.io/viaje.ro/';
+
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -79,12 +82,11 @@ const Auth = () => {
           }
         }
         // Sempre usar GitHub Pages para email confirmation URL
-        const emailRedirectUrl = 'https://orodrigobraz.github.io/viaje.ro/';
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: emailRedirectUrl,
+            emailRedirectTo: AUTH_REDIRECT_URL,
             data: {
               name: displayName
             }
@@ -124,14 +126,39 @@ const Auth = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed) {
+      toast.error('Informe seu email');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo: AUTH_REDIRECT_URL,
+      });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success(
+          'Se esse email estiver cadastrado, você receberá um link para redefinir a senha.'
+        );
+        setIsForgotPassword(false);
+      }
+    } catch {
+      toast.error('Erro inesperado. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleAuth = async () => {
     try {
-      // Sempre usar GitHub Pages para email confirmation URL
-      const redirectUrl = 'https://orodrigobraz.github.io/viaje.ro/';
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl
+          redirectTo: AUTH_REDIRECT_URL
         }
       });
       
@@ -150,13 +177,18 @@ const Auth = () => {
       <Card className="w-full max-w-md relative z-10 bg-background/95 backdrop-blur-sm">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            {isSignUp ? 'Criar Conta' : 'Entrar'}
+            {isForgotPassword
+              ? 'Recuperar senha'
+              : isSignUp
+                ? 'Criar Conta'
+                : 'Entrar'}
           </CardTitle>
           <CardDescription className="text-center">
-            {isSignUp 
-              ? 'Crie sua conta para salvar suas cidades visitadas'
-              : 'Entre com sua conta para acessar suas cidades'
-            }
+            {isForgotPassword
+              ? 'Informe o email da sua conta. Enviaremos um link para criar uma nova senha.'
+              : isSignUp
+                ? 'Crie sua conta para salvar suas cidades visitadas'
+                : 'Entre com sua conta para acessar suas cidades'}
           </CardDescription>
         </CardHeader>
         
@@ -186,132 +218,182 @@ const Auth = () => {
           </div>
 
           {/* Email/Password Form */}
-          <form onSubmit={handleEmailAuth} className="space-y-4">
-            {isSignUp && (
+          {isForgotPassword ? (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="displayName">Nome</Label>
+                <Label htmlFor="email-forgot">Email</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input
-                    id="displayName"
-                    type="text"
-                    placeholder="Seu nome"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
+                    id="email-forgot"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
-                    required={isSignUp}
+                    required
+                    autoComplete="email"
                   />
                 </div>
               </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-              {isSignUp && password && (
-                <div className="space-y-1 px-2 py-2 bg-muted/50 rounded-md">
-                  <p className="text-xs font-medium mb-2">Requisitos da senha:</p>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs">
-                      {passwordRequirements.minLength ? (
-                        <Check className="h-3 w-3 text-green-600" />
-                      ) : (
-                        <X className="h-3 w-3 text-muted-foreground" />
-                      )}
-                      <span className={passwordRequirements.minLength ? 'line-through text-muted-foreground' : ''}>
-                        Mínimo 8 caracteres
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      {passwordRequirements.hasNumber ? (
-                        <Check className="h-3 w-3 text-green-600" />
-                      ) : (
-                        <X className="h-3 w-3 text-muted-foreground" />
-                      )}
-                      <span className={passwordRequirements.hasNumber ? 'line-through text-muted-foreground' : ''}>
-                        Pelo menos 1 número
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      {passwordRequirements.hasUppercase ? (
-                        <Check className="h-3 w-3 text-green-600" />
-                      ) : (
-                        <X className="h-3 w-3 text-muted-foreground" />
-                      )}
-                      <span className={passwordRequirements.hasUppercase ? 'line-through text-muted-foreground' : ''}>
-                        Pelo menos 1 letra maiúscula
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      {passwordRequirements.hasSpecialChar ? (
-                        <Check className="h-3 w-3 text-green-600" />
-                      ) : (
-                        <X className="h-3 w-3 text-muted-foreground" />
-                      )}
-                      <span className={passwordRequirements.hasSpecialChar ? 'line-through text-muted-foreground' : ''}>
-                        Pelo menos 1 caractere especial (!@#$%&*?=-_+)
-                      </span>
-                    </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Enviando...' : 'Enviar link de recuperação'}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handleEmailAuth} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">Nome</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                    <Input
+                      id="displayName"
+                      type="text"
+                      placeholder="Seu nome"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="pl-10"
+                      required={isSignUp}
+                    />
                   </div>
                 </div>
               )}
-            </div>
-            
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Carregando...' : (isSignUp ? 'Criar Conta' : 'Entrar')}
-            </Button>
-          </form>
+              
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    required
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {isSignUp && password && (
+                  <div className="space-y-1 px-2 py-2 bg-muted/50 rounded-md">
+                    <p className="text-xs font-medium mb-2">Requisitos da senha:</p>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-xs">
+                        {passwordRequirements.minLength ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <X className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span className={passwordRequirements.minLength ? 'line-through text-muted-foreground' : ''}>
+                          Mínimo 8 caracteres
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        {passwordRequirements.hasNumber ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <X className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span className={passwordRequirements.hasNumber ? 'line-through text-muted-foreground' : ''}>
+                          Pelo menos 1 número
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        {passwordRequirements.hasUppercase ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <X className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span className={passwordRequirements.hasUppercase ? 'line-through text-muted-foreground' : ''}>
+                          Pelo menos 1 letra maiúscula
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        {passwordRequirements.hasSpecialChar ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <X className="h-3 w-3 text-muted-foreground" />
+                        )}
+                        <span className={passwordRequirements.hasSpecialChar ? 'line-through text-muted-foreground' : ''}>
+                          Pelo menos 1 caractere especial (!@#$%&*?=-_+)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Carregando...' : (isSignUp ? 'Criar Conta' : 'Entrar')}
+              </Button>
+            </form>
+          )}
 
           <div className="text-center space-y-2">
-            <Button
-              type="button"
-              variant="link"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm"
-            >
-              {isSignUp 
-                ? 'Já tem uma conta? Faça login'
-                : 'Não tem uma conta? Cadastre-se'
-              }
-            </Button>
+            {!isSignUp && !isForgotPassword && (
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => setIsForgotPassword(true)}
+                className="text-sm block w-full"
+              >
+                Esqueci minha senha
+              </Button>
+            )}
+            {isForgotPassword ? (
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => setIsForgotPassword(false)}
+                className="text-sm"
+              >
+                Voltar ao login
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setIsForgotPassword(false);
+                }}
+                className="text-sm"
+              >
+                {isSignUp 
+                  ? 'Já tem uma conta? Faça login'
+                  : 'Não tem uma conta? Cadastre-se'
+                }
+              </Button>
+            )}
             
             <div className="text-xs text-muted-foreground">
               <Link to="/" className="hover:underline">
