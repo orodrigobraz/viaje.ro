@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { StateSelector } from '@/components/StateSelector';
 import { CitySelector } from '@/components/CitySelector';
@@ -8,8 +7,8 @@ import { CityList } from '@/components/CityList';
 import { StatisticsModal } from '@/components/StatisticsModal';
 import { WishlistModal } from '@/components/WishlistModal';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { LogIn, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import AuthCard from '@/components/AuthCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useCities } from '@/hooks/useCities';
 import { searchCity } from '@/data/mockData';
@@ -30,7 +29,6 @@ const Index = () => {
   
   const [selectedState, setSelectedState] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
-  const navigate = useNavigate();
 
   const handleAddCity = async (cityName: string) => {
     if (!user) {
@@ -113,25 +111,12 @@ const Index = () => {
     );
   }
 
-  // Mostrar tela de login se não estiver autenticado
+  // Mostrar formulário de login se não estiver autenticado
   if (!user) {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4">
         <AnimatedBackground />
-        <Card className="w-full max-w-md relative z-10 bg-background/95 backdrop-blur-sm">
-          <CardContent className="pt-6 text-center space-y-4">
-            <LogIn className="mx-auto h-12 w-12 text-muted-foreground" />
-            <div>
-              <h2 className="text-xl font-semibold mb-2">Bem-vindo ao Viajero</h2>
-              <p className="text-muted-foreground mb-4">
-                Faça login para salvar suas cidades visitadas e criar sua lista de desejos
-              </p>
-            </div>
-            <Button onClick={() => navigate('/auth')} className="w-full">
-              Fazer Login / Cadastro
-            </Button>
-          </CardContent>
-        </Card>
+        <AuthCard />
       </div>
     );
   }
