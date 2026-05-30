@@ -18,9 +18,16 @@ const passwordSchema = z.string()
 
 type PageStatus = 'loading' | 'ready' | 'invalid';
 
+/** Limpa tokens da URL após o Supabase processar o link do e-mail. */
+const cleanAuthParamsFromUrl = () => {
+  const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+  window.history.replaceState({}, document.title, cleanUrl);
+};
+
 const ResetPassword = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<PageStatus>('loading');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,60 +60,121 @@ const ResetPassword = () => {
 
   useEffect(() => {
     let mounted = true;
+    let resolved = false;
 
     const markReady = () => {
-      if (mounted) setStatus('ready');
+      if (!mounted || resolved) return;
+      resolved = true;
+      setStatus('ready');
+      setErrorMessage(null);
     };
 
-    const verifySession = async () => {
-      const searchParams = new URLSearchParams(window.location.search);
-      const code = searchParams.get('code');
+    const markInvalid = (message?: string) => {
+      if (!mounted || resolved) return;
+      resolved = true;
+      setStatus('invalid');
+      setErrorMessage(message ?? null);
+    };
 
+    const establishRecoverySession = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+
+      const authError =
+        searchParams.get('error_description') ||
+        searchParams.get('error') ||
+        hashParams.get('error_description') ||
+        hashParams.get('error');
+
+      if (authError) {
+        markInvalid(decodeURIComponent(authError.replace(/\+/g, ' ')));
+        cleanAuthParamsFromUrl();
+        return;
+      }
+
+      const code = searchParams.get('code');
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
+        cleanAuthParamsFromUrl();
         if (error) {
-          if (mounted) setStatus('invalid');
+          markInvalid(error.message);
           return;
         }
-        window.history.replaceState({}, document.title, window.location.pathname);
         markReady();
         return;
       }
 
-      const hashParams = new URLSearchParams(window.location.hash.slice(1));
-      const isRecoveryHash =
-        hashParams.get('type') === 'recovery' || !!hashParams.get('access_token');
+      const tokenHash = searchParams.get('token_hash');
+      const type = searchParams.get('type') ?? hashParams.get('type');
+      if (tokenHash && type === 'recovery') {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        });
+        cleanAuthParamsFromUrl();
+        if (error) {
+          markInvalid(error.message);
+          return;
+        }
+        markReady();
+        return;
+      }
+
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        cleanAuthParamsFromUrl();
+        if (error) {
+          markInvalid(error.message);
+          return;
+        }
+        markReady();
+        return;
+      }
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (session && (isRecoveryHash || hashParams.get('type') === 'recovery')) {
+      if (session) {
         markReady();
         return;
       }
 
-      if (isRecoveryHash) {
-        return;
-      }
+      const hasPendingAuth =
+        !!code ||
+        !!tokenHash ||
+        type === 'recovery' ||
+        !!accessToken ||
+        hashParams.get('type') === 'recovery';
 
-      if (mounted) setStatus('invalid');
+      if (!hasPendingAuth) {
+        markInvalid();
+      }
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      const hashParams = new URLSearchParams(window.location.hash.slice(1));
-      const isRecoveryLink =
-        event === 'PASSWORD_RECOVERY' || hashParams.get('type') === 'recovery';
+      if (!session) return;
 
-      if (isRecoveryLink && session) {
+      if (
+        event === 'PASSWORD_RECOVERY' ||
+        event === 'INITIAL_SESSION' ||
+        event === 'SIGNED_IN' ||
+        event === 'TOKEN_REFRESHED'
+      ) {
         markReady();
+        cleanAuthParamsFromUrl();
       }
     });
 
-    verifySession();
+    establishRecoverySession();
 
     const timeout = window.setTimeout(() => {
-      if (mounted) {
-        setStatus((current) => (current === 'loading' ? 'invalid' : current));
+      if (mounted && !resolved) {
+        markInvalid('Não foi possível validar o link. Solicite um novo e-mail de recuperação.');
       }
-    }, 5000);
+    }, 10000);
 
     return () => {
       mounted = false;
@@ -170,6 +238,9 @@ const ResetPassword = () => {
 
           {status === 'invalid' && (
             <div className="text-center space-y-4">
+              {errorMessage && (
+                <p className="text-sm text-destructive">{errorMessage}</p>
+              )}
               <p className="text-sm text-muted-foreground">
                 Solicite um novo link em &quot;Esqueci minha senha&quot; na tela de login.
               </p>
